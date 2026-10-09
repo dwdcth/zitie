@@ -1,0 +1,96 @@
+# zitie 字帖生成器
+
+Web 版字帖(copybook)生成器:输入任意文字,生成可打印的 A4 PDF 字帖。支持汉字、英文及更多语言,无需注册。
+
+灵感来自 [钟毓汉字字帖生成器](https://gitee.com/pollybird/zhongyu_chinese_copybook) 与 [钟毓英语衡水体字帖生成器](https://gitee.com/pollybird/zhongyu_english_copybook_-hengshui)(均为 Electron 桌面应用),本项目把同样的能力做成了自托管的 Web 服务,排版与 PDF 生成完全在 Rust 服务端完成。
+
+## 功能
+
+- **六种纸型**:米字格 / 田字格 / 回宫格 / 作文纸 / 四线三格 / 单横线
+- **四种模式**:描红(浅色字供描写)、抄写(空格,可选行首示范字)、描红+抄写、纯字帖
+- **任意语言**:按 Unicode 字素簇(grapheme cluster)逐字入格——汉字、英文、谚文、emoji 均可;字素内部经 rustybuzz 整形,支持印度系文字记号定位
+- **自定义字体**:内置开源字体(霞鹜文楷 / Short Stack / Andika),支持上传 .ttf/.otf(衡水体等字体请自行上传)
+- **页眉**:标题 + 最多 3 个自定义字段(班级/姓名/学号,空值画横线)+ 页码
+- **无注册**:匿名 cookie 关联偏好设置与上传的字体,偏好存 SQLite
+- **浏览器缓存**:PDF 按参数内容寻址(`sha256(规范化参数)`),`immutable + ETag`,同参数字帖只计算一次
+
+## 技术栈
+
+Rust · Axum · SeaORM + SQLite(启动时自动迁移)· krilla(PDF)· skrifa / rustybuzz(字体度量与整形)· 原生 HTML/JS/CSS 前端(无构建步骤)
+
+排版引擎(`src/layout/`)是纯计算,输出中间表示(IR),渲染层(`src/render/`)把 IR 翻译成 krilla 调用——两层通过 IR 解耦,均可独立单测。渲染确定性:同一参数永远产出字节相同的 PDF。
+
+## 快速开始
+
+```bash
+# 1. 下载内置字体(约 26MB,仅首次;OFL 等开源协议)
+./scripts/fetch-fonts.sh
+
+# 2. 启动
+cargo run --release
+# 默认监听 0.0.0.0:8080,打开 http://localhost:8080
+```
+
+数据(SQLite、上传字体、PDF 缓存)都落在 `./data` 目录。
+
+### 配置(环境变量)
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `ZITIE_ADDR` | `0.0.0.0:8080` | 监听地址 |
+| `ZITIE_DATA_DIR` | `data` | 数据目录 |
+| `ZITIE_ASSETS_DIR` | `assets` | 内置字体目录 |
+| `ZITIE_STATIC_DIR` | `static` | 前端文件目录 |
+| `ZITIE_CACHE_QUOTA_MB` | `500` | PDF 磁盘缓存配额,超限按 LRU 淘汰 |
+| `ZITIE_SECURE_COOKIE` | `false` | https 部署时设为 `1` |
+
+### Docker
+
+```bash
+docker build -t zitie .
+docker run -d -p 8080:8080 -v zitie-data:/data zitie
+```
+
+## REST API
+
+| 方法/路径 | 说明 |
+|---|---|
+| `GET/PUT /api/preferences` | 偏好读写(匿名 cookie 关联) |
+| `GET /api/fonts` | 字体列表(内置 + 本人上传) |
+| `POST /api/fonts` | 上传字体(multipart 字段 `font`,≤20MB,.ttf/.otf/.ttc) |
+| `DELETE /api/fonts/{id}` | 删除本人上传的字体 |
+| `POST /api/generate` | 生成:参数校验 + 布局,返回 `{url, hash, pages}` |
+| `GET /api/pdf/{hash}.pdf` | 获取 PDF(内容寻址,`immutable` 缓存;`?dl=1` 下载) |
+
+示例:
+
+```bash
+curl -c jar -X POST localhost:8080/api/generate \
+  -H 'content-type: application/json' \
+  -d '{"text":"永和九年","paper":"mizi","mode":"miaohong","font_id":"lxgw-wenkai"}'
+# → {"url":"/api/pdf/….pdf","hash":"…","pages":1}
+curl -b jar -OJ localhost:8080/api/pdf/….pdf?dl=1
+```
+
+参数结构见 `src/layout/model.rs` 的 `GenerateParams`(全字段可省略,均有默认值)。
+
+## 内置字体与版权
+
+| 字体 | 协议 | 用途 |
+|---|---|---|
+| 霞鹜文楷 [lxgw/LxgwWenKai](https://github.com/lxgw/LxgwWenKai) | OFL 1.1 | 中文默认(楷书风格) |
+| Short Stack(Google Fonts) | OFL | 英文默认(教学印刷体) |
+| Andika(SIL) | OFL | 英文备选(识字教学体,x 高度清晰) |
+
+字体二进制不入库,由 `scripts/fetch-fonts.sh` 下载并校验 sha256;许可证文本在 `assets/fonts/OFL-*.txt`。衡水体、田英章楷书等商用字体请用户自行上传,本项目不分发。
+
+## 开发
+
+```bash
+cargo test          # 41 个测试:排版黄金值 / PDF 冒烟 / API 集成
+cargo clippy --all-targets
+```
+
+## 许可
+
+Apache-2.0

@@ -1,0 +1,15 @@
+# Rust
+/target
+debug/
+fuzz/
+
+# 运行时数据(SQLite、上传字体、PDF 缓存)
+/data
+
+# 内置字体二进制(由 scripts/fetch-fonts.sh 下载,清单与许可证已提交)
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+# 本地环境
+.env
+*.local

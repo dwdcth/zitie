@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字帖生成器</title>
+  <link rel="stylesheet" href="/static/style.css?v=1">
+  <script type="module" src="/static/app.js?v=1" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>字帖生成器</h1>
+    <p class="subtitle">汉字 · 英文 · 任意语言 | 描红 / 抄写字帖,支持自定义字体</p>
+  </header>
+
+  <main class="layout">
+    <!-- ========== 左侧:设置面板 ========== -->
+    <form id="panel" autocomplete="off" onsubmit="return false">
+
+      <section class="card">
+        <h2>纸型</h2>
+        <div class="radio-grid" id="paper-grid">
+          <label class="radio-card"><input type="radio" name="paper" value="mizi">
+            <svg viewBox="0 0 36 36"><rect x="3" y="3" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 3 L33 33 M33 3 L3 33 M18 3 V33 M3 18 H33" stroke="currentColor" stroke-width="0.9" stroke-dasharray="2.5 2" fill="none"/></svg>
+            <span>米字格</span></label>
+          <label class="radio-card"><input type="radio" name="paper" value="tianzi">
+            <svg viewBox="0 0 36 36"><rect x="3" y="3" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M18 3 V33 M3 18 H33" stroke="currentColor" stroke-width="0.9" stroke-dasharray="2.5 2" fill="none"/></svg>
+            <span>田字格</span></label>
+          <label class="radio-card"><input type="radio" name="paper" value="huigong">
+            <svg viewBox="0 0 36 36"><rect x="3" y="3" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="10.5" y="10.5" width="15" height="15" fill="none" stroke="currentColor" stroke-width="0.9"/></svg>
+            <span>回宫格</span></label>
+          <label class="radio-card"><input type="radio" name="paper" value="zuowen">
+            <svg viewBox="0 0 36 36"><g fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="30" height="30"/><path d="M13 3 V33 M23 3 V33 M3 13 H33 M3 23 H33"/></g></svg>
+            <span>作文纸</span></label>
+          <label class="radio-card"><input type="radio" name="paper" value="sixian">
+            <svg viewBox="0 0 36 36"><g stroke="currentColor" stroke-width="1" fill="none"><path d="M3 8 H33 M3 16 H33 M3 24 H33 M3 32 H33"/></g><path d="M10 24 L14 16 L18 24 M19 16 V24 M19 17 L23 24 M27 16 C24 22 27 24 29 22" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
+            <span>四线三格</span></label>
+          <label class="radio-card"><input type="radio" name="paper" value="hengxian">
+            <svg viewBox="0 0 36 36"><path d="M3 22 H33" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M9 22 C7 15 8 12 10 12 C12 12 12 16 12 22 M16 12 V22 M16 13 L21 22 M25 12 V22 M23 12 H27" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+            <span>单横线</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>模式</h2>
+        <div class="radio-grid four" id="mode-grid">
+          <label class="radio-card"><input type="radio" name="mode" value="miaohong"><span>描红</span></label>
+          <label class="radio-card"><input type="radio" name="mode" value="chaoxie"><span>抄写</span></label>
+          <label class="radio-card"><input type="radio" name="mode" value="hunhe"><span>描红+抄写</span></label>
+          <label class="radio-card"><input type="radio" name="mode" value="chuntie"><span>纯字帖</span></label>
+        </div>
+        <div class="row">
+          <label class="field" data-for="trace">描红格数<input type="number" name="trace_count" min="1" max="10"></label>
+          <label class="field" data-for="copy">抄写格数<input type="number" name="copy_count" min="1" max="10"></label>
+        </div>
+        <label class="check" data-for="demo"><input type="checkbox" name="row_leading_demo"> 抄写模式行首给示范字</label>
+      </section>
+
+      <section class="card">
+        <h2>字体</h2>
+        <div class="row">
+          <select id="font-select" class="grow" name="font_id"></select>
+          <button type="button" id="font-upload-btn" class="btn">上传字体</button>
+          <input type="file" id="font-file" accept=".ttf,.otf" hidden>
+        </div>
+        <div id="font-preview" class="font-preview" hidden></div>
+        <div class="hint">支持 .ttf / .otf(≤20MB)。内置字体均为开源协议(霞鹜文楷 OFL 等);衡水体等商用字体请自行上传。</div>
+        <div id="upload-progress" class="progress" hidden><div class="bar"></div></div>
+        <div id="my-fonts" class="my-fonts"></div>
+      </section>
+
+      <section class="card">
+        <h2>练习内容</h2>
+        <textarea id="text" name="text" rows="4" placeholder="输入要练习的文字,例如:永和九年 岁在癸丑&#10;换行会另起一行;作文纸中空格占一个格"></textarea>
+        <div class="hint row-between"><span id="char-count">0 字</span><span class="hint-ops">
+          <button type="button" class="linklike" data-sample="永和九年岁在癸丑暮春之初">《兰亭集序》</button>
+          <button type="button" class="linklike" data-sample="床前明月光疑是地上霜举头望明月低头思故乡">《静夜思》</button>
+          <button type="button" class="linklike" data-sample="abcdefghijklmnopqrstuvwxyz">字母表</button>
+        </span></div>
+      </section>
+
+      <section class="card">
+        <h2>页眉</h2>
+        <label class="field">标题<input type="text" name="title" maxlength="40" placeholder="如:三年级语文生字练习"></label>
+        <div class="fields" id="header-fields"></div>
+        <button type="button" id="add-field" class="btn slim">+ 添加字段</button>
+        <label class="check"><input type="checkbox" name="page_number"> 显示页码</label>
+      </section>
+
+      <details class="card">
+        <summary><h2>尺寸与颜色</h2></summary>
+        <div class="row">
+          <label class="field" data-for="cell-size">格子大小 pt<input type="number" name="cell_size_pt" min="20" max="100" step="0.5" placeholder="自动"></label>
+          <label class="field" data-for="line-height">行高 pt<input type="number" name="line_height_pt" min="10" max="50" step="0.5" placeholder="自动"></label>
+          <label class="field" data-for="cell-width">格宽 pt<input type="number" name="cell_width_pt" min="8" max="100" step="0.5" placeholder="自动"></label>
+        </div>
+        <div class="row">
+          <label class="field" data-for="cols">每行格数<input type="number" name="cols_per_row" min="4" max="40" placeholder="自动"></label>
+          <label class="field">格间距 pt<input type="number" name="col_gap_pt" min="0" max="30" step="0.5"></label>
+          <label class="field">行间距 pt<input type="number" name="row_gap_pt" min="0" max="40" step="0.5"></label>
+        </div>
+        <div class="row">
+          <label class="field">上边距 mm<input type="number" name="margin_top" min="5" max="40" step="0.5"></label>
+          <label class="field">下边距 mm<input type="number" name="margin_bottom" min="5" max="40" step="0.5"></label>
+          <label class="field">左右边距 mm<input type="number" name="margin_lr" min="5" max="40" step="0.5"></label>
+        </div>
+        <div class="row colors">
+          <label class="color">格线<input type="color" name="c_grid"></label>
+          <label class="color">描红<input type="color" name="c_light"></label>
+          <label class="color">示范<input type="color" name="c_demo"></label>
+          <label class="color">实字<input type="color" name="c_solid"></label>
+        </div>
+      </details>
+    </form>
+
+    <!-- ========== 右侧:预览 ========== -->
+    <section class="preview-col">
+      <div class="toolbar">
+        <span id="status" class="status">就绪</span>
+        <span class="spacer"></span>
+        <button type="button" id="print-btn" class="btn">打印</button>
+        <a id="download-btn" class="btn primary" download>下载 PDF</a>
+      </div>
+      <div class="frame-wrap">
+        <iframe id="preview" title="字帖预览"></iframe>
+        <div id="mobile-hint" class="mobile-hint" hidden>
+          当前浏览器可能不支持内嵌 PDF 预览,请使用「下载 PDF」按钮。
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toasts" class="toasts"></div>
+</body>
+</html>

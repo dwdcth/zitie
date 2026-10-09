@@ -1,0 +1,25 @@
+{
+  "fonts": [
+    {
+      "id": "lxgw-wenkai",
+      "file": "LXGWWenKai-Regular.ttf",
+      "family": "霞鹜文楷",
+      "subfamily": "Regular",
+      "sha256": "39ad71264b588165b469e35e6afb162a378dacd1f95348160240ba9038ac3009"
+    },
+    {
+      "id": "shortstack",
+      "file": "ShortStack-Regular.ttf",
+      "family": "Short Stack",
+      "subfamily": "Regular",
+      "sha256": "9f0e16e8683b2dce66edd7c3340362b554326739fbac594cabc1e9442cf5e8cc"
+    },
+    {
+      "id": "andika",
+      "file": "Andika-Regular.ttf",
+      "family": "Andika",
+      "subfamily": "Regular",
+      "sha256": "202b96b1f174a4a43baefe885b40dacacb81786755efd08ed4b7704e79c45515"
+    }
+  ]
+}
