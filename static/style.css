@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* hidden 属性必须永远生效:类的 display 规则会覆盖 UA 样式表的 [hidden]{display:none} */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
