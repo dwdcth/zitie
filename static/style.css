@@ -23,6 +23,7 @@ html, body {
 
 .topbar {
   padding: 14px 22px 10px;
+  position: relative;
 }
 .topbar h1 {
   margin: 0;
@@ -33,6 +34,11 @@ html, body {
   margin: 2px 0 0;
   color: var(--ink-2);
   font-size: 13px;
+}
+.lang-btn {
+  position: absolute;
+  right: 22px;
+  top: 16px;
 }
 
 /* ---------- 布局 ---------- */
@@ -271,6 +277,54 @@ textarea { resize: vertical; }
 .spacer { flex: 1; }
 .status { font-size: 13px; color: var(--ink-2); }
 .status.err { color: var(--danger); }
+
+/* 历史下拉 */
+.history-wrap { position: relative; }
+.history-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 320px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(20, 24, 40, .14);
+  z-index: 30;
+  padding: 6px;
+}
+.history-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.history-item:hover { background: #f5f7fa; }
+.hi-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hi-preview {
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+.hi-meta { font-size: 11.5px; color: var(--ink-2); }
+.hi-ops { display: flex; gap: 2px; flex-shrink: 0; }
+.linklike.danger { color: var(--danger); }
+
 .frame-wrap {
   flex: 1;
   position: relative;

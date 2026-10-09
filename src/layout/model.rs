@@ -92,6 +92,53 @@ impl Mode {
     }
 }
 
+/// 文字方向:决定行内格子的排列顺序。Auto 按文本首个强方向字符判断。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum Direction {
+    #[serde(rename = "auto")]
+    #[default]
+    Auto,
+    #[serde(rename = "ltr")]
+    Ltr,
+    #[serde(rename = "rtl")]
+    Rtl,
+}
+
+impl Direction {
+    /// 解析为是否从右向左排。
+    pub fn is_rtl(self, text: &str) -> bool {
+        match self {
+            Direction::Rtl => true,
+            Direction::Ltr => false,
+            Direction::Auto => first_strong_is_rtl(text),
+        }
+    }
+}
+
+/// 首个强方向字符是否属于 RTL 书写系统(希伯来/阿拉伯系)。
+fn first_strong_is_rtl(text: &str) -> bool {
+    for c in text.chars() {
+        let cp = c as u32;
+        let rtl = matches!(cp,
+            0x0590..=0x05FF      // 希伯来
+            | 0x0600..=0x06FF     // 阿拉伯
+            | 0x0700..=0x074F     // 叙利亚
+            | 0x0750..=0x077F     // 阿拉伯补充
+            | 0x0860..=0x08FF     // 阿拉曼
+            | 0xFB1D..=0xFDFF     // 希伯来呈现形式
+            | 0xFE70..=0xFEFF     // 阿拉伯呈现形式
+        );
+        if rtl {
+            return true;
+        }
+        // 常见 LTR 强方向字符直接定案(拉丁/希腊/西里尔/CJK 视作 LTR)
+        if c.is_alphabetic() || (0x4E00..=0x9FFF).contains(&cp) {
+            return false;
+        }
+    }
+    false
+}
+
 /// RGB 颜色,序列化为 `#rrggbb`。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Color(#[serde(with = "color_hex")] pub [u8; 3]);
@@ -252,6 +299,12 @@ pub struct GenerateParams {
     /// 抄写模式行首示范字
     #[serde(default = "GenerateParams::d_true")]
     pub row_leading_demo: bool,
+    /// 汉字上方标注拼音(仅方块格纸型生效)
+    #[serde(default)]
+    pub pinyin: bool,
+    /// 行内格子排列方向
+    #[serde(default)]
+    pub direction: Direction,
     #[serde(default = "GenerateParams::d_font")]
     pub font_id: String,
     /// 方块格边长 pt;None = 按纸型默认
@@ -324,6 +377,8 @@ impl Default for GenerateParams {
             trace_count: 3,
             copy_count: 3,
             row_leading_demo: true,
+            pinyin: false,
+            direction: Direction::default(),
             font_id: "lxgw-wenkai".into(),
             cell_size_pt: None,
             line_height_pt: None,

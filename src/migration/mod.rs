@@ -1,4 +1,5 @@
 pub mod m20260101_000001_init;
+pub mod m20260102_000002_history;
 
 use sea_orm_migration::MigratorTrait;
 
@@ -8,6 +9,9 @@ pub struct Migrator;
 
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn sea_orm_migration::MigrationTrait>> {
-        vec![Box::new(m20260101_000001_init::Migration)]
+        vec![
+            Box::new(m20260101_000001_init::Migration),
+            Box::new(m20260102_000002_history::Migration),
+        ]
     }
 }

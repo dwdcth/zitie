@@ -40,6 +40,14 @@ pub fn router(state: SharedState) -> Router {
         )
         .route("/api/fonts/{id}", delete(api::fonts::remove))
         .route("/api/generate", post(api::generate::generate))
+        .route(
+            "/api/history",
+            get(api::history::list),
+        )
+        .route(
+            "/api/history/{id}",
+            get(api::history::get_params).delete(api::history::remove),
+        )
         .layer(from_fn_with_state(state.clone(), middleware::anon_user));
 
     // 不需要身份的路由(PDF 内容寻址,公开只读;避免爬虫建用户)

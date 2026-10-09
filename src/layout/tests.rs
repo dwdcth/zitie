@@ -327,3 +327,88 @@ fn space_occupies_a_cell_in_practice_paper() {
     assert_eq!(pages[0][0][2].content, CellContent::Empty, "第 3 格应为空格分隔");
     assert!(matches!(&pages[0][0][3].content, CellContent::Light(c) if c == "c"));
 }
+
+/// 拼音:开启后行高增加拼音条,格子上方出现小字号拼音字素
+#[test]
+fn pinyin_strip_and_annotation() {
+    let mut p = base_params();
+    p.text = "永和".into();
+    p.mode = Mode::ChaoXie;
+    p.copy_count = 1;
+    p.header = HeaderConfig { title: None, fields: vec![], page_number: false };
+    let geo_off = Geometry::new(&p);
+    p.pinyin = true;
+    let geo_on = Geometry::new(&p);
+    assert_eq!(geo_on.pinyin_strip, paginate::PINYIN_STRIP);
+    assert!(
+        geo_on.row_h > geo_off.row_h,
+        "开启拼音后行高应包含拼音条"
+    );
+
+    let entry = font_entry("LXGWWenKai-Regular.ttf");
+    let doc = layout_document(&p, &entry).unwrap();
+    // 找到小字号(拼音)的 op:其 text 应为 "yǒng"/"hé"
+    let pinyin_ops: Vec<&IrOp> = doc.pages[0]
+        .ops
+        .iter()
+        .filter(|op| match op {
+            IrOp::Glyphs { text, size, .. } => {
+                *size < 8.0 && (text.contains('y') || text.contains('h'))
+            }
+            _ => false,
+        })
+        .collect();
+    assert!(!pinyin_ops.is_empty(), "应有拼音标注 op");
+    // 拼音基线在格子框上沿之上
+    if let IrOp::Glyphs { origin, .. } = pinyin_ops[0] {
+        let cell_top = geo_on.cell_top_of(0, 0);
+        assert!(origin.1 <= cell_top, "拼音应画在格子上方");
+    }
+}
+
+/// 拼音仅对方块格纸型生效
+#[test]
+fn pinyin_ignored_on_ruled_paper() {
+    let mut p = base_params();
+    p.paper = PaperKind::SiXian;
+    p.text = "永".into();
+    p.pinyin = true;
+    let geo = Geometry::new(&p);
+    assert_eq!(geo.pinyin_strip, 0.0, "四线三格不标拼音");
+}
+
+/// RTL:行内格子从右端排起,行首示范格在最右
+#[test]
+fn rtl_row_direction() {
+    let mut p = base_params();
+    p.text = "永和".into();
+    p.mode = Mode::ChaoXie;
+    p.copy_count = 1;
+    p.row_leading_demo = true;
+    p.cols_per_row = Some(6);
+    let geo_ltr = Geometry::new(&p);
+    assert!(!geo_ltr.rtl, "中文默认 LTR");
+    assert!(geo_ltr.x_of(0) < geo_ltr.x_of(1), "LTR 列 0 在左");
+
+    p.direction = model_direction_rtl();
+    let geo_rtl = Geometry::new(&p);
+    assert!(geo_rtl.rtl);
+    assert!(geo_rtl.x_of(0) > geo_rtl.x_of(1), "RTL 列 0 在右");
+    // RTL 镜像:RTL 列 0 与 LTR 最末列同位,反之亦然
+    assert!((geo_rtl.x_of(0) - geo_ltr.x_of(5)).abs() < 0.01, "RTL 行首 = LTR 行尾位置");
+    assert!((geo_rtl.x_of(5) - geo_ltr.x_of(0)).abs() < 0.01, "RTL 行尾 = LTR 行首位置");
+}
+
+/// 阿拉伯文本自动判定 RTL
+#[test]
+fn arabic_auto_detects_rtl() {
+    let mut p = base_params();
+    p.text = "مرحبا".into();
+    assert!(Geometry::new(&p).rtl, "阿拉伯文应自动 RTL");
+    p.direction = Direction::Ltr;
+    assert!(!Geometry::new(&p).rtl, "显式 Ltr 覆盖自动判定");
+}
+
+fn model_direction_rtl() -> Direction {
+    Direction::Rtl
+}

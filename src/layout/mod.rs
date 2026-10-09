@@ -7,6 +7,7 @@ pub mod header;
 pub mod ir;
 pub mod model;
 pub mod paginate;
+pub mod pinyin;
 pub mod ruled;
 #[cfg(test)]
 mod tests;

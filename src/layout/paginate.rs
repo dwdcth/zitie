@@ -25,6 +25,9 @@ pub struct Cell {
 pub type Row = Vec<Cell>;
 pub type PageRows = Vec<Row>;
 
+/// 拼音条高度(pt):开启拼音时,方块格上方预留的标注区。
+pub const PINYIN_STRIP: f64 = 11.0;
+
 /// 页面几何(全部 pt,top-left 原点)。
 pub struct Geometry {
     pub left: f64,
@@ -38,6 +41,10 @@ pub struct Geometry {
     pub row_h: f64,
     pub col_gap: f64,
     pub row_gap: f64,
+    /// 行内格子是否从右向左排(RTL 文本)
+    pub rtl: bool,
+    /// 方块格上方拼音条高度;0 = 无拼音
+    pub pinyin_strip: f64,
 }
 
 impl Geometry {
@@ -54,10 +61,12 @@ impl Geometry {
             + if has_title || has_fields { 8.0 } else { 0.0 };
         let pn_h = if p.header.page_number { 14.0 } else { 0.0 };
 
+        // 拼音条仅对方块格纸型生效
+        let pinyin_strip = if p.pinyin && !p.paper.is_ruled() { PINYIN_STRIP } else { 0.0 };
         let (cell_w, row_h) = match p.paper {
             PaperKind::SiXian => (p.cell_width(), p.line_height() * 3.0),
             PaperKind::HengXian => (p.cell_width(), p.line_height()),
-            _ => (p.cell_size(), p.cell_size()),
+            _ => (p.cell_size(), p.cell_size() + pinyin_strip),
         };
 
         let ch_first = super::model::A4_H_PT - top - header_h - bottom - pn_h;
@@ -92,6 +101,8 @@ impl Geometry {
             row_h,
             col_gap: p.col_gap_pt,
             row_gap: p.row_gap_pt,
+            rtl: p.direction.is_rtl(&p.text),
+            pinyin_strip,
         }
     }
 
@@ -112,14 +123,24 @@ impl Geometry {
         }
     }
 
-    /// 第 col 列格子的左边界 x。
+    /// 第 col 列格子的左边界 x。RTL 时行首(col 0)在最右。
     pub fn x_of(&self, col: usize) -> f64 {
-        self.left + col as f64 * (self.cell_w + self.col_gap)
+        let slot = if self.rtl {
+            (self.cols as f64 - 1.0 - col as f64).max(0.0)
+        } else {
+            col as f64
+        };
+        self.left + slot * (self.cell_w + self.col_gap)
     }
 
     /// 第 row 行(页内)的顶部 y。
     pub fn y_of(&self, page_idx: usize, row: usize) -> f64 {
         self.top_of(page_idx) + row as f64 * (self.row_h + self.row_gap)
+    }
+
+    /// 第 row 行(页内)格子框的顶部 y(扣除拼音条后)。
+    pub fn cell_top_of(&self, page_idx: usize, row: usize) -> f64 {
+        self.y_of(page_idx, row) + self.pinyin_strip
     }
 }
 

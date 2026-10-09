@@ -24,12 +24,12 @@ pub fn paint_page(
     let colors = &params.colors;
 
     for r in 0..geo.rows_of(page_idx) {
-        let y = geo.y_of(page_idx, r);
+        let y = geo.cell_top_of(page_idx, r);
         for c in 0..geo.cols {
             let x = geo.x_of(c);
             paint_cell_frame(ops, params.paper, x, y, s, &colors.grid);
         }
-        // 字符
+        // 字符与拼音
         if let Some(row) = rows.get(r) {
             for cell in row {
                 let x = geo.x_of(cell.col);
@@ -38,9 +38,53 @@ pub fn paint_page(
                 {
                     ops.push(op);
                 }
+                // 拼音条:单汉字 cluster 标注在格子正上方
+                if geo.pinyin_strip > 0.0 {
+                    place_pinyin(
+                        ops,
+                        shaper,
+                        &cell.content,
+                        x,
+                        y - geo.pinyin_strip,
+                        geo,
+                        params,
+                    );
+                }
             }
         }
     }
+}
+
+/// 拼音标注:居中于格子上方的拼音条内,小字号实色。
+/// 声调字母可能由多个字素构成(如 ǎ 的组合写法),复用 text_run_ops 逐字素出 op。
+fn place_pinyin(
+    ops: &mut Vec<IrOp>,
+    shaper: &mut Shaper<'_>,
+    content: &CellContent,
+    cell_x: f64,
+    strip_top: f64,
+    geo: &Geometry,
+    params: &GenerateParams,
+) {
+    let cluster = match content {
+        CellContent::Empty => return,
+        CellContent::Light(c) | CellContent::Solid(c) | CellContent::Demo(c) => c.as_str(),
+    };
+    let Some(py) = super::pinyin::pinyin_of(cluster) else { return };
+    let strip_h = geo.pinyin_strip;
+    let size = strip_h * 0.62;
+    let w = super::text_run_width(shaper, &py, size);
+    let x = cell_x + (geo.cell_w - w) / 2.0;
+    let baseline = strip_top + strip_h * 0.8;
+    ops.extend(super::text_run_ops(
+        shaper,
+        &py,
+        x,
+        baseline,
+        size,
+        params.colors.solid,
+        &params.font_id,
+    ));
 }
 
 /// 格子装饰线。

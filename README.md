@@ -8,11 +8,15 @@ Web 版字帖(copybook)生成器:输入任意文字,生成可打印的 A4 PDF �
 
 - **六种纸型**:米字格 / 田字格 / 回宫格 / 作文纸 / 四线三格 / 单横线
 - **四种模式**:描红(浅色字供描写)、抄写(空格,可选行首示范字)、描红+抄写、纯字帖
+- **拼音标注**:汉字格子上方标注带声调拼音(多音字取常用读音,不做上下文消歧)
 - **任意语言**:按 Unicode 字素簇(grapheme cluster)逐字入格——汉字、英文、谚文、emoji 均可;字素内部经 rustybuzz 整形,支持印度系文字记号定位
-- **自定义字体**:内置开源字体(霞鹜文楷 / Short Stack / Andika),支持上传 .ttf/.otf(衡水体等字体请自行上传)
+- **RTL 文字**:阿拉伯文、希伯来文等自动(或手动指定)从右向左排列,行首示范格位于行右端
+- **自定义字体**:内置开源字体(霞鹜文楷 / Short Stack / Andika),支持上传 .ttf/.otf(衡水体、阿拉伯字体等请自行上传)
 - **页眉**:标题 + 最多 3 个自定义字段(班级/姓名/学号,空值画横线)+ 页码
+- **生成历史**:最近 50 次生成按用户保存,可一键恢复完整参数
 - **无注册**:匿名 cookie 关联偏好设置与上传的字体,偏好存 SQLite
 - **浏览器缓存**:PDF 按参数内容寻址(`sha256(规范化参数)`),`immutable + ETag`,同参数字帖只计算一次
+- **中英界面**:按浏览器语言自动适配,右上角可切换(服务端错误消息为中文)
 
 ## 技术栈
 
@@ -59,8 +63,11 @@ docker run -d -p 8080:8080 -v zitie-data:/data zitie
 | `GET /api/fonts` | 字体列表(内置 + 本人上传) |
 | `POST /api/fonts` | 上传字体(multipart 字段 `font`,≤20MB,.ttf/.otf/.ttc) |
 | `DELETE /api/fonts/{id}` | 删除本人上传的字体 |
-| `POST /api/generate` | 生成:参数校验 + 布局,返回 `{url, hash, pages}` |
+| `POST /api/generate` | 生成:参数校验 + 布局,返回 `{url, hash, pages}`;写入生成历史 |
 | `GET /api/pdf/{hash}.pdf` | 获取 PDF(内容寻址,`immutable` 缓存;`?dl=1` 下载) |
+| `GET /api/history` | 最近 50 条生成历史 |
+| `GET /api/history/{id}` | 取单条历史的完整参数(恢复用) |
+| `DELETE /api/history/{id}` | 删除历史条目 |
 
 示例:
 
@@ -87,7 +94,7 @@ curl -b jar -OJ localhost:8080/api/pdf/….pdf?dl=1
 ## 开发
 
 ```bash
-cargo test          # 41 个测试:排版黄金值 / PDF 冒烟 / API 集成
+cargo test          # 排版黄金值 / PDF 冒烟 / API 集成(含拼音、RTL、历史)
 cargo clippy --all-targets
 ```
 
