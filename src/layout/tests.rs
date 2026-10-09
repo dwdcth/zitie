@@ -536,7 +536,7 @@ fn hengxian_size_and_baseline_on_line() {
     );
 
     // 基线 = 横线上移一个下伸高度;字号 = 0.68×行距(默认 10mm)
-    let mut shaper = Shaper::new(&entry);
+    let shaper = Shaper::new(&entry);
     let size = super::ruled::font_size(&shaper, &p);
     let info = shaper.face_info();
     let desc_pt = (info.descender / info.units_per_em).abs() * size;
