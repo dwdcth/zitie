@@ -29,6 +29,9 @@ pub fn render_pdf(ir: &DocumentIr, store: &FontStore) -> Result<Vec<u8>, RenderE
         for op in &ir_page.ops {
             match op {
                 IrOp::Stroke { path, style } => {
+                    // fill/stroke 是 surface 的持久状态:画线前必须清掉残留的 fill,
+                    // 否则后续格子矩形会被上一行的字形颜色填充
+                    surface.set_fill(None);
                     surface.set_stroke(Some(to_stroke(style)));
                     if let Some(kp) = to_path(path) {
                         surface.draw_path(&kp);
@@ -39,6 +42,7 @@ pub fn render_pdf(ir: &DocumentIr, store: &FontStore) -> Result<Vec<u8>, RenderE
                         .get(font_id)
                         .map(|e| e.krilla_font.clone())
                         .ok_or(RenderError::FontMissing)?;
+                    surface.set_stroke(None);
                     surface.set_fill(Some(Fill {
                         paint: to_paint(*color),
                         ..Default::default()

@@ -4,8 +4,9 @@
 use crate::layout::model::{GenerateParams, Margins};
 use sha2::{Digest, Sha256};
 
-/// 哈希域版本前缀:排版引擎行为变更时递增,整体失效旧缓存。
-const HASH_DOMAIN: &[u8] = b"zitie-v1\0";
+/// 哈希域版本前缀:排版/渲染引擎行为变更时递增,整体失效旧缓存
+/// (v2:修复 fill 状态泄漏导致的格子被填充问题)。
+const HASH_DOMAIN: &[u8] = b"zitie-v2\0";
 
 /// 规范化:CRLF→LF、去首尾空白、浮点取两位小数、清理空字段。
 pub fn canonicalize(p: &GenerateParams) -> GenerateParams {
