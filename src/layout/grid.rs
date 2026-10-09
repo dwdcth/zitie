@@ -22,8 +22,35 @@ pub fn paint_page(
 ) {
     let s = geo.cell_w;
     let colors = &params.colors;
+    let ttb = params.direction.is_ttb(params.paper.is_ruled());
+    // 每页的"线条数":横排 = 行数;竖排 = 列数(cols)
+    let line_count = if ttb { geo.cols } else { geo.rows_of(page_idx) };
 
-    for r in 0..geo.rows_of(page_idx) {
+    for r in 0..line_count {
+        if ttb {
+            // 竖排:r = 从右数的第 r 列(geo.rtl 已镜像 x_of)
+            let x = geo.x_of(r);
+            for i in 0..geo.rows_of(page_idx) {
+                let y = geo.cell_top_of(page_idx, i);
+                paint_cell_frame(ops, params.paper, x, y, s, &colors.grid);
+            }
+            if let Some(column) = rows.get(r) {
+                for cell in column {
+                    // cell.col = 列内的垂直槽位
+                    let y = geo.cell_top_of(page_idx, cell.col);
+                    if let Some(op) =
+                        place_in_cell(shaper, &cell.content, x, y, s, &params.font_id, colors)
+                    {
+                        ops.push(op);
+                    }
+                    if geo.pinyin_strip > 0.0 {
+                        place_pinyin(ops, shaper, &cell.content, x, y - geo.pinyin_strip, geo, params);
+                    }
+                }
+            }
+            continue;
+        }
+        // 横排(LTR/RTL)
         let y = geo.cell_top_of(page_idx, r);
         for c in 0..geo.cols {
             let x = geo.x_of(c);

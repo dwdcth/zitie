@@ -218,6 +218,19 @@ pub fn layout_document(
     entry: &FontEntry,
 ) -> Result<DocumentIr, LayoutError> {
     let mut shaper = Shaper::new(entry);
+    // 线格纸型:未指定格宽时按字体度量推导(保证字母间有间隙,不再挤压)
+    let eff_params;
+    let params = if params.paper.is_ruled() && params.cell_width_pt.is_none() {
+        let size = ruled::font_size(&shaper, params);
+        let cell_w = ruled::default_cell_width(&mut shaper, size);
+        eff_params = GenerateParams {
+            cell_width_pt: Some((cell_w * 100.0).round() / 100.0),
+            ..params.clone()
+        };
+        &eff_params
+    } else {
+        params
+    };
     let geometry = paginate::Geometry::new(params);
     let pages = paginate::paginate(params, &geometry);
     if pages.len() > model::MAX_PAGES {

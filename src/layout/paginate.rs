@@ -160,12 +160,19 @@ fn expand(cluster: &str, p: &GenerateParams) -> Vec<CellContent> {
     }
 }
 
-/// 流式分页。返回每页的行(行内格子按 col 顺序,可能不满一行)。
+/// 流式分页。返回每页的行(LTR/RTL)或列(TTB)。
+/// TTB(竖排)时:每条"行"是一竖列,列内容量 = 页行数,每页列数 = cols,
+/// 列序从右到左(渲染层按 geo.rtl 镜像)。
 #[allow(unused_assignments)] // flush_row 宏末次写 demo_pending 无后续读取
 pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
     let continuous = p.paper.is_continuous();
     let want_demo = p.mode == Mode::ChaoXie && p.row_leading_demo && !continuous;
+    let ttb = p.direction.is_ttb(p.paper.is_ruled());
     let cols = geo.cols;
+
+    // 一条行/列的格子容量 与 每页的行/列数(随页而变:首页扣页眉)
+    let line_cap = |page_idx: usize| if ttb { geo.rows_of(page_idx) } else { cols };
+    let lines_per_page = |page_idx: usize| if ttb { cols } else { geo.rows_of(page_idx) };
 
     let mut pages: Vec<PageRows> = vec![Vec::new()];
     let mut cur_row: Row = Vec::new();
@@ -175,7 +182,7 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
         ($force:expr) => {{
             let force = $force;
             if !cur_row.is_empty() || force {
-                let cap = geo.rows_of(pages.len() - 1);
+                let cap = lines_per_page(pages.len() - 1);
                 if pages.last().map_or(0, |pg| pg.len()) >= cap {
                     pages.push(Vec::new());
                 }
@@ -191,7 +198,7 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
             Token::Newline => flush_row!(true),
             Token::Space => {
                 // 空格占一个空格:作文纸占位,练习纸作为词间分隔/休整格
-                if cur_row.len() >= cols {
+                if cur_row.len() >= line_cap(pages.len() - 1) {
                     flush_row!(false);
                 }
                 cur_row.push(Cell { col: cur_row.len(), content: CellContent::Empty });
@@ -208,10 +215,10 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
                     expand(&c, p)
                 };
                 for unit in units {
-                    if cur_row.len() >= cols {
+                    if cur_row.len() >= line_cap(pages.len() - 1) {
                         flush_row!(false);
                     }
-                    // 行首示范:该行第一个单元属于某 cluster 时补一个示范格(不占练习配额)
+                    // 行首/列首示范:该行第一个单元属于某 cluster 时补一个示范格(不占练习配额)
                     if want_demo && demo_pending && cur_row.is_empty() {
                         cur_row.push(Cell { col: 0, content: CellContent::Demo(c.clone()) });
                         demo_pending = false;

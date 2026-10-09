@@ -92,7 +92,8 @@ impl Mode {
     }
 }
 
-/// 文字方向:决定行内格子的排列顺序。Auto 按文本首个强方向字符判断。
+/// 文字方向:决定行内格子的排列顺序。Auto 按文本首个强方向字符判断;
+/// TtbRtl 为传统竖排:列内从上到下,列序从右到左(仅方块格纸型生效)。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Direction {
     #[serde(rename = "auto")]
@@ -102,16 +103,23 @@ pub enum Direction {
     Ltr,
     #[serde(rename = "rtl")]
     Rtl,
+    #[serde(rename = "ttb-rtl")]
+    TtbRtl,
 }
 
 impl Direction {
-    /// 解析为是否从右向左排。
+    /// 是否按从右向左排(RTL 行或竖排列序)。TtbRtl 的判定与文本无关。
     pub fn is_rtl(self, text: &str) -> bool {
         match self {
-            Direction::Rtl => true,
+            Direction::Rtl | Direction::TtbRtl => true,
             Direction::Ltr => false,
             Direction::Auto => first_strong_is_rtl(text),
         }
+    }
+
+    /// 是否竖排(仅方块格纸型;线格纸型忽略并退化为 LTR)。
+    pub fn is_ttb(self, ruled: bool) -> bool {
+        self == Direction::TtbRtl && !ruled
     }
 }
 
@@ -356,9 +364,12 @@ impl GenerateParams {
         self.cell_size_pt.unwrap_or(15.0 * MM_TO_PT)
     }
 
-    /// 线格类纸型:四线三格单格高 / 单横线行距(pt)。
+    /// 线格类纸型:四线三格单格高 / 单横线行距(pt)。单横线需要更大行距承载整行手写体。
     pub fn line_height(&self) -> f64 {
-        self.line_height_pt.unwrap_or(8.0 * MM_TO_PT)
+        match self.paper {
+            PaperKind::HengXian => self.line_height_pt.unwrap_or(10.0 * MM_TO_PT),
+            _ => self.line_height_pt.unwrap_or(8.0 * MM_TO_PT),
+        }
     }
 
     /// 线格类纸型的格宽(pt)。

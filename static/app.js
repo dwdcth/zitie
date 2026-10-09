@@ -21,6 +21,7 @@ const I18N = {
     trace_count: '描红格数', copy_count: '抄写格数', row_demo: '抄写模式行首给示范字',
     pinyin_label: '汉字上方标注拼音',
     direction: '排列方向', dir_auto: '自动(按文字判断)', dir_ltr: '从左到右', dir_rtl: '从右到左',
+    dir_ttb: '竖排(从上到下,自右向左)',
     upload_font: '上传字体',
     font_hint: '支持 .ttf / .otf(≤20MB)。内置字体均为开源协议(霞鹜文楷 OFL 等);衡水体等商用字体请自行上传。',
     content_ph: '输入要练习的文字,例如:永和九年 岁在癸丑\n换行会另起一行;空格占一个格',
@@ -54,6 +55,7 @@ const I18N = {
     trace_count: 'Trace cells', copy_count: 'Copy cells', row_demo: 'Leading example cell when copying',
     pinyin_label: 'Pinyin above each character',
     direction: 'Direction', dir_auto: 'Auto (per script)', dir_ltr: 'Left to right', dir_rtl: 'Right to left',
+    dir_ttb: 'Vertical (top-to-bottom, right-to-left)',
     upload_font: 'Upload font',
     font_hint: 'Accepts .ttf / .otf (≤20MB). Built-in fonts are open source (OFL); upload commercial fonts yourself.',
     content_ph: 'Text to practice, e.g. 永和九年\nNewlines start a new row; spaces take one cell',
@@ -265,6 +267,15 @@ function updateVisibility() {
   $('[data-for="copy"]').style.display = usesCopy ? '' : 'none';
   $('[data-for="demo"]').style.display = state.mode === 'chaoxie' ? '' : 'none';
   $('[data-for="pinyin"]').style.display = ruled ? 'none' : '';
+  // 竖排仅对方块格纸型有意义;线格纸型上禁用该选项
+  const ttbOpt = document.querySelector('select[name="direction"] option[value="ttb-rtl"]');
+  if (ttbOpt) {
+    ttbOpt.disabled = ruled;
+    if (ruled && state.direction === 'ttb-rtl') {
+      state.direction = 'auto';
+      fillInput('direction', 'auto');
+    }
+  }
 }
 
 function updateCharCount() {

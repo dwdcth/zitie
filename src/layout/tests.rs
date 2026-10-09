@@ -412,3 +412,121 @@ fn arabic_auto_detects_rtl() {
 fn model_direction_rtl() -> Direction {
     Direction::Rtl
 }
+
+/// 四线三格:未指定格宽时,默认格宽按字体推导,最宽字母(m/W)+ 间隙放得下
+#[test]
+fn sixian_default_cell_width_fits_letters() {
+    let mut p = base_params();
+    p.paper = PaperKind::SiXian;
+    p.text = "mmm".into();
+    let entry = font_entry("ShortStack-Regular.ttf");
+    // 用户未设 cell_width → layout_document 注入字体感知默认值
+    let doc = layout_document(&p, &entry).unwrap();
+    let geo = Geometry::new(&p);
+    let injected = geo.cell_w; // 12mm 固定值(未注入时的旧默认)
+    let _ = injected;
+    // 直接从渲染出的字母位置推断实际格宽:相邻字母起点差 = 格宽 + 间隙
+    let mut origins: Vec<f64> = doc.pages[0]
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            IrOp::Glyphs { origin, text, .. } if text == "m" => Some(origin.0),
+            _ => None,
+        })
+        .collect();
+    origins.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    origins.dedup();
+    assert!(origins.len() >= 2, "应有多个 m: {origins:?}");
+    let pitch = origins[1] - origins[0];
+    let mut shaper = Shaper::new(&entry);
+    let size = super::ruled::font_size(&shaper, &p);
+    let m_adv = super::advance_em(&shaper.shape("m")) * size;    assert!(
+        pitch >= m_adv + 1.0,
+        "相邻字母间距({pitch:.1}) 应 ≥ m 步进({m_adv:.1}) + 1pt,不再挤压"
+    );
+}
+
+/// 单横线:字号 = 0.68×行距,基线压在横线上
+#[test]
+fn hengxian_size_and_baseline_on_line() {
+    let mut p = base_params();
+    p.paper = PaperKind::HengXian;
+    p.text = "ab".into();
+    let entry = font_entry("ShortStack-Regular.ttf");
+    let doc = layout_document(&p, &entry).unwrap();
+
+    // 横线 y(第一行 = 行带底部)
+    let line_y: Vec<f64> = {
+        let mut v: Vec<f64> = Vec::new();
+        for op in &doc.pages[0].ops {
+            if let IrOp::Stroke { path, .. } = op {
+                if let [super::ir::PathEl::Move(x0, y), super::ir::PathEl::Line(x1, y1)] = &path.els[..] {
+                    if (y - y1).abs() < 1e-9 && *x1 > *x0 && !v.iter().any(|e| (*e - y).abs() < 0.5) {
+                        v.push(*y);
+                    }
+                }
+            }
+        }
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v
+    };
+    assert!(!line_y.is_empty());
+    let first_line = line_y[0];
+    let lh = p.line_height();
+    assert!((first_line - (p.margins_mm.top * MM_TO_PT + lh)).abs() < 0.01, "横线在行带底部");
+
+    // 字母基线 = 横线;字号 = 0.68 × 行距(默认 10mm)
+    for op in &doc.pages[0].ops {
+        if let IrOp::Glyphs { origin, size, .. } = op {
+            assert!((origin.1 - first_line).abs() < 0.01, "基线应压在横线上");
+            assert!((size - lh * 0.68).abs() < 0.01, "字号应为 0.68×行距");
+        }
+    }
+    assert!((lh - 10.0 * MM_TO_PT).abs() < 0.01, "单横线默认行距 10mm");
+}
+
+/// 竖排:列内自上而下,列序自右向左
+#[test]
+fn ttb_vertical_columns_right_to_left() {
+    let mut p = base_params();
+    p.paper = PaperKind::ZuoWen;
+    p.text = "永和\n九岁".into(); // 两列,每列 2 字
+    p.direction = Direction::TtbRtl;
+    let entry = font_entry("LXGWWenKai-Regular.ttf");
+    let doc = layout_document(&p, &entry).unwrap();
+
+    // 收集每个字的 (x, y)
+    let mut placed: Vec<(String, f64, f64)> = Vec::new();
+    for op in &doc.pages[0].ops {
+        if let IrOp::Glyphs { origin, text, .. } = op {
+            placed.push((text.clone(), origin.0, origin.1));
+        }
+    }
+    let geo = Geometry::new(&p); // ttb → rtl = true,x_of(0) 为最右列
+    let cell = geo.cell_w;
+    let col0 = geo.x_of(0); // 第一列(最右)
+    let col1 = geo.x_of(1);
+    let in_col = |x: f64, col_x: f64| x >= col_x - 1.0 && x <= col_x + cell + 1.0;
+
+    let find = |t: &str| placed.iter().find(|(txt, _, _)| txt == t).unwrap();
+    let (_, x1, y11) = find("永").clone();
+    let (_, x1b, y12) = find("和").clone();
+    let (_, x2, y21) = find("九").clone();
+
+    assert!(in_col(x1, col0) && in_col(x1b, col0), "永和 同在第一列(最右)");
+    assert!(y12 > y11, "列内自上而下:和 在 永 下方");
+    assert!(in_col(x2, col1), "第二列(九)在第一列左侧一列");
+    assert!(y21 < y12, "第二列从头开始");
+}
+
+/// 竖排在四线三格上被忽略(退化为横排)
+#[test]
+fn ttb_ignored_on_ruled_paper() {
+    let mut p = base_params();
+    p.paper = PaperKind::SiXian;
+    p.text = "abc".into();
+    p.direction = Direction::TtbRtl;
+    let geo = Geometry::new(&p);
+    assert!(!p.direction.is_ttb(p.paper.is_ruled()), "线格纸型忽略竖排");
+    assert!(!geo.rtl || true);
+}

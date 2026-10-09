@@ -1,6 +1,8 @@
 //! 线格纸型(四线三格/单横线)的绘制:行线 + 基线对齐的字符放置。
 //! 四线三格字号由字体 x-height 推导:小写 x 恰好填满中间格,
 //! 上伸部自然进入上格、下伸部进入下格(以 ascender/descender 钳制不越线)。
+//! 单横线:基线压在横线上(手写本语义),下伸部探入行间隙。
+//! 格宽默认值按字体度量推导(以 m/W 的步进为准),保证字母间有间隙。
 
 use super::ir::{IrOp, IrPath, StrokeSpec};
 use super::model::{GenerateParams, PaperKind};
@@ -8,9 +10,27 @@ use super::paginate::{CellContent, Geometry, PageRows};
 use super::{advance_em, laid_glyphs, Shaper};
 
 const LINE_WIDTH: f64 = 0.5;
-/// 单横线:基线在行带中的位置比例与字号相对行距的比例
-const HENG_BASELINE_RATIO: f64 = 0.75;
-const HENG_SIZE_RATIO: f64 = 0.55;
+/// 单横线字号相对行距的比例(x 高 ≈ 0.34 行距,上伸部 ≈ 0.51,下伸部 ≈ 0.17)
+const HENG_SIZE_RATIO: f64 = 0.68;
+/// 字母最小间隙 pt
+const LETTER_GAP: f64 = 3.0;
+
+/// 该纸型下的字号(pt)。
+pub fn font_size(shaper: &Shaper<'_>, params: &GenerateParams) -> f64 {
+    match params.paper {
+        PaperKind::SiXian => sixian_font_size(shaper, params.line_height()),
+        PaperKind::HengXian => params.line_height() * HENG_SIZE_RATIO,
+        _ => unreachable!("方块纸型无字号推导"),
+    }
+}
+
+/// 格宽默认值:能容纳最宽常见字母(m/W)+ 间隙。
+pub fn default_cell_width(shaper: &mut Shaper<'_>, size: f64) -> f64 {
+    let adv = |s: &mut Shaper<'_>, c: &str| advance_em(&s.shape(c)) * size;
+    let m = adv(shaper, "m");
+    let w = adv(shaper, "W");
+    (m.max(w) + LETTER_GAP).max(18.0)
+}
 
 pub fn paint_page(
     ops: &mut Vec<IrOp>,
@@ -23,10 +43,11 @@ pub fn paint_page(
     let colors = &params.colors;
     let line_style = StrokeSpec { color: colors.grid, width: LINE_WIDTH, dash: None };
     let x_right = geo.left + geo.content_w;
+    let font_size = font_size(shaper, params);
 
     for r in 0..geo.rows_of(page_idx) {
         let y = geo.y_of(page_idx, r);
-        let (baseline_y, font_size) = match params.paper {
+        let baseline_y = match params.paper {
             PaperKind::SiXian => {
                 let h = params.line_height();
                 for k in 0..=3 {
@@ -35,13 +56,13 @@ pub fn paint_page(
                         style: line_style.clone(),
                     });
                 }
-                (y + 2.0 * h, sixian_font_size(shaper, h))
+                y + 2.0 * h
             }
             PaperKind::HengXian => {
-                let lh = params.line_height();
-                let ly = y + lh * HENG_BASELINE_RATIO;
+                // 横线在行带底部,字母基线压线
+                let ly = y + params.line_height();
                 ops.push(IrOp::Stroke { path: IrPath::hline(geo.left, x_right, ly), style: line_style.clone() });
-                (ly, lh * HENG_SIZE_RATIO)
+                ly
             }
             _ => unreachable!("方块纸型由 grid 模块处理"),
         };
