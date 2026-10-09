@@ -68,8 +68,8 @@ pub async fn upload(
     }
     let bytes = font_bytes.ok_or_else(|| AppError::invalid("缺少 font 字段"))?;
 
-    let (info, family, subfamily, _idx) =
-        FontStore::validate_and_build(bytes.clone()).map_err(|e| AppError::invalid(e.to_string()))?;
+    let (info, family, subfamily, _idx) = FontStore::validate_and_build(bytes.clone())
+        .map_err(|e| AppError::invalid(e.to_string()))?;
     let sha = hex::encode(sha2::Sha256::digest(&bytes));
 
     // 去重:同用户同文件直接返回已有记录
@@ -80,15 +80,12 @@ pub async fn upload(
         .await
         .map_err(anyhow::Error::new)?;
     if let Some(row) = existing {
-        let summary = state
-            .fonts
-            .get(&row.id)
-            .map(|e| FontSummary {
-                id: e.id.clone(),
-                family: e.family.clone(),
-                subfamily: e.subfamily.clone(),
-                builtin: false,
-            });
+        let summary = state.fonts.get(&row.id).map(|e| FontSummary {
+            id: e.id.clone(),
+            family: e.family.clone(),
+            subfamily: e.subfamily.clone(),
+            builtin: false,
+        });
         if let Some(s) = summary {
             return Ok((StatusCode::OK, Json(s)));
         }
@@ -136,7 +133,12 @@ pub async fn upload(
 
     Ok((
         StatusCode::CREATED,
-        Json(FontSummary { id, family, subfamily, builtin: false }),
+        Json(FontSummary {
+            id,
+            family,
+            subfamily,
+            builtin: false,
+        }),
     ))
 }
 
@@ -173,10 +175,8 @@ pub async fn font_file(State(state): State<SharedState>, Path(id): Path<String>)
     match std::fs::read(&entry.file_path) {
         Ok(bytes) => {
             let mut resp = bytes.into_response();
-            resp.headers_mut().insert(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("font/ttf"),
-            );
+            resp.headers_mut()
+                .insert(header::CONTENT_TYPE, HeaderValue::from_static("font/ttf"));
             resp.headers_mut().insert(
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("public, max-age=31536000, immutable"),

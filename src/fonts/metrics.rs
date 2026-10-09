@@ -172,7 +172,11 @@ impl skrifa::outline::OutlinePen for BoundsPen {
 pub fn ink_box(font: &skrifa::FontRef<'_>, gid: u16) -> Option<InkBox> {
     let og = font.outline_glyphs().get(GlyphId::new(gid as u32))?;
     let mut pen = BoundsPen::default();
-    og.draw(skrifa::outline::DrawSettings::from(Size::unscaled()), &mut pen).ok()?;
+    og.draw(
+        skrifa::outline::DrawSettings::from(Size::unscaled()),
+        &mut pen,
+    )
+    .ok()?;
     if !pen.any {
         return None;
     }

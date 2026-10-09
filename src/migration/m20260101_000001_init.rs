@@ -23,9 +23,18 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Preferences::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Preferences::UserId).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Preferences::UserId)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Preferences::Data).text().not_null())
-                    .col(ColumnDef::new(Preferences::UpdatedAt).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(Preferences::UpdatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_preferences_user")
@@ -85,9 +94,15 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.drop_table(Table::drop().table(Fonts::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(Preferences::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(Users::Table).to_owned()).await?;
+        manager
+            .drop_table(Table::drop().table(Fonts::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Preferences::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Users::Table).to_owned())
+            .await?;
         Ok(())
     }
 }

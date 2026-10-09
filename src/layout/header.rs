@@ -20,8 +20,11 @@ pub fn paint_header(
 ) {
     let colors = &params.colors;
     let text_color = colors.solid;
-    let has_title =
-        params.header.title.as_deref().is_some_and(|t| !t.trim().is_empty());
+    let has_title = params
+        .header
+        .title
+        .as_deref()
+        .is_some_and(|t| !t.trim().is_empty());
     let fields: Vec<_> = params
         .header
         .fields
@@ -34,7 +37,15 @@ pub fn paint_header(
         let title = params.header.title.as_deref().unwrap_or_default().trim();
         let w = text_run_width(shaper, title, TITLE_SIZE);
         let x = geo.left + (geo.content_w - w) / 2.0;
-        ops.extend(text_run_ops(shaper, title, x, y + TITLE_SIZE * 0.8, TITLE_SIZE, text_color, &params.font_id));
+        ops.extend(text_run_ops(
+            shaper,
+            title,
+            x,
+            y + TITLE_SIZE * 0.8,
+            TITLE_SIZE,
+            text_color,
+            &params.font_id,
+        ));
         y += 30.0;
     }
     if !fields.is_empty() {
@@ -44,17 +55,37 @@ pub fn paint_header(
             let baseline = y + FIELD_SIZE * 0.9;
             let mut pen = x;
             let label = format!("{}:", f.label.trim());
-            ops.extend(text_run_ops(shaper, &label, pen, baseline, FIELD_SIZE, text_color, &params.font_id));
+            ops.extend(text_run_ops(
+                shaper,
+                &label,
+                pen,
+                baseline,
+                FIELD_SIZE,
+                text_color,
+                &params.font_id,
+            ));
             pen += text_run_width(shaper, &label, FIELD_SIZE) + 3.0;
             let value = f.value.trim();
             if value.is_empty() {
                 // 空值画下划线供手填
                 ops.push(IrOp::Stroke {
                     path: IrPath::hline(pen, pen + BLANK_LINE_LEN, baseline + 1.5),
-                    style: StrokeSpec { color: text_color, width: 0.6, dash: None },
+                    style: StrokeSpec {
+                        color: text_color,
+                        width: 0.6,
+                        dash: None,
+                    },
                 });
             } else {
-                ops.extend(text_run_ops(shaper, value, pen, baseline, FIELD_SIZE, text_color, &params.font_id));
+                ops.extend(text_run_ops(
+                    shaper,
+                    value,
+                    pen,
+                    baseline,
+                    FIELD_SIZE,
+                    text_color,
+                    &params.font_id,
+                ));
             }
         }
     }
@@ -75,5 +106,13 @@ pub fn paint_page_number(
     let w = text_run_width(shaper, &text, PAGE_NO_SIZE);
     let x = (super::model::A4_W_PT - w) / 2.0;
     let y = super::model::A4_H_PT - params.margins_mm.bottom * super::model::MM_TO_PT * 0.45;
-    ops.extend(text_run_ops(shaper, &text, x, y, PAGE_NO_SIZE, params.colors.solid, &params.font_id));
+    ops.extend(text_run_ops(
+        shaper,
+        &text,
+        x,
+        y,
+        PAGE_NO_SIZE,
+        params.colors.solid,
+        &params.font_id,
+    ));
 }

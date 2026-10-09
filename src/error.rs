@@ -37,7 +37,11 @@ impl AppError {
             AppError::Forbidden(m) => ("forbidden", StatusCode::FORBIDDEN, m.clone()),
             AppError::Internal(e) => {
                 tracing::error!(error = ?e, "internal error");
-                ("internal", StatusCode::INTERNAL_SERVER_ERROR, "服务器内部错误,请稍后重试".into())
+                (
+                    "internal",
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "服务器内部错误,请稍后重试".into(),
+                )
             }
         }
     }
@@ -46,7 +50,11 @@ impl AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (code, status, message) = self.parts();
-        (status, Json(json!({ "error": { "code": code, "message": message } }))).into_response()
+        (
+            status,
+            Json(json!({ "error": { "code": code, "message": message } })),
+        )
+            .into_response()
     }
 }
 

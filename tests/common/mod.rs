@@ -25,16 +25,22 @@ pub async fn test_app() -> Router {
         secure_cookie: false,
     });
 
-    let db = zitie::db::init(&cfg.db_path()).await.expect("测试数据库初始化失败");
+    let db = zitie::db::init(&cfg.db_path())
+        .await
+        .expect("测试数据库初始化失败");
     let fonts = Arc::new(
-        zitie::fonts::FontStore::load_builtin(&cfg.builtin_fonts_dir()).expect(
-            "内置字体加载失败(请先运行 ./scripts/fetch-fonts.sh)",
-        ),
+        zitie::fonts::FontStore::load_builtin(&cfg.builtin_fonts_dir())
+            .expect("内置字体加载失败(请先运行 ./scripts/fetch-fonts.sh)"),
     );
     let cache =
         Arc::new(zitie::pdfcache::PdfCache::new(cfg.cache_dir(), 64).expect("缓存目录创建失败"));
 
-    router(Arc::new(AppState { db, fonts, cache, cfg }))
+    router(Arc::new(AppState {
+        db,
+        fonts,
+        cache,
+        cfg,
+    }))
 }
 
 /// 发送 JSON/空请求,返回 (status, body, set_cookie)
@@ -85,11 +91,16 @@ pub async fn upload_font(app: &mut Router, path: &str, cookie: &str) -> (StatusC
         .method("POST")
         .uri("/api/fonts")
         .header("cookie", cookie)
-        .header("content-type", format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .body(Body::from(full))
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     let status = resp.status();
-    let body = axum::body::to_bytes(resp.into_body(), 32 * 1024 * 1024).await.unwrap();
+    let body = axum::body::to_bytes(resp.into_body(), 32 * 1024 * 1024)
+        .await
+        .unwrap();
     (status, body)
 }

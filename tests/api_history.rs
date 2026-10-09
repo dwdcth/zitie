@@ -19,9 +19,30 @@ async fn history_records_dedupe_and_restore() {
     let cookie = cookie.unwrap();
 
     // 两次不同参数 + 一次重复参数
-    req(&mut app, "POST", "/api/generate", Some(params_for("永和")), Some(&cookie)).await;
-    req(&mut app, "POST", "/api/generate", Some(params_for("山高")), Some(&cookie)).await;
-    req(&mut app, "POST", "/api/generate", Some(params_for("永和")), Some(&cookie)).await;
+    req(
+        &mut app,
+        "POST",
+        "/api/generate",
+        Some(params_for("永和")),
+        Some(&cookie),
+    )
+    .await;
+    req(
+        &mut app,
+        "POST",
+        "/api/generate",
+        Some(params_for("山高")),
+        Some(&cookie),
+    )
+    .await;
+    req(
+        &mut app,
+        "POST",
+        "/api/generate",
+        Some(params_for("永和")),
+        Some(&cookie),
+    )
+    .await;
 
     let (status, body, _) = req(&mut app, "GET", "/api/history", None, Some(&cookie)).await;
     assert_eq!(status, StatusCode::OK);
@@ -38,19 +59,40 @@ async fn history_records_dedupe_and_restore() {
 
     // 恢复:取回完整参数
     let id = items[0]["id"].as_str().unwrap().to_string();
-    let (status, body, _) = req(&mut app, "GET", &format!("/api/history/{id}"), None, Some(&cookie)).await;
+    let (status, body, _) = req(
+        &mut app,
+        "GET",
+        &format!("/api/history/{id}"),
+        None,
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let params: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(params["text"], "永和");
     assert_eq!(params["paper"], "mizi");
 
     // 删除后再取 → 404;列表变 1
-    let (status, _, _) = req(&mut app, "DELETE", &format!("/api/history/{id}"), None, Some(&cookie)).await;
+    let (status, _, _) = req(
+        &mut app,
+        "DELETE",
+        &format!("/api/history/{id}"),
+        None,
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
     let (_, body, _) = req(&mut app, "GET", "/api/history", None, Some(&cookie)).await;
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(v.as_array().unwrap().len(), 1);
-    let (status, _, _) = req(&mut app, "GET", &format!("/api/history/{id}"), None, Some(&cookie)).await;
+    let (status, _, _) = req(
+        &mut app,
+        "GET",
+        &format!("/api/history/{id}"),
+        None,
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
@@ -62,7 +104,14 @@ async fn history_is_per_user() {
     let alice = alice.unwrap();
     let bob = bob.unwrap();
 
-    req(&mut app, "POST", "/api/generate", Some(params_for("甲乙")), Some(&alice)).await;
+    req(
+        &mut app,
+        "POST",
+        "/api/generate",
+        Some(params_for("甲乙")),
+        Some(&alice),
+    )
+    .await;
     let (_, body, _) = req(&mut app, "GET", "/api/history", None, Some(&bob)).await;
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(v.as_array().unwrap().is_empty(), "bob 看不到 alice 的历史");
@@ -73,6 +122,13 @@ async fn history_is_per_user() {
         .as_str()
         .unwrap()
         .to_string();
-    let (status, _, _) = req(&mut app, "DELETE", &format!("/api/history/{id}"), None, Some(&bob)).await;
+    let (status, _, _) = req(
+        &mut app,
+        "DELETE",
+        &format!("/api/history/{id}"),
+        None,
+        Some(&bob),
+    )
+    .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }

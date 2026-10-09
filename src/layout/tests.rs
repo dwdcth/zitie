@@ -9,15 +9,28 @@ use crate::fonts::build_entry;
 
 fn font_entry(name: &str) -> crate::fonts::FontEntry {
     let path = format!("{}/assets/fonts/{name}", env!("CARGO_MANIFEST_DIR"));
-    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("读取 {path} 失败(先运行 scripts/fetch-fonts.sh):{e}"));
-    build_entry("test-font".into(), None, "Test".into(), "Regular".into(), "0".into(), path.into(), bytes)
-        .expect("内置字体应能构建")
+    let bytes = std::fs::read(&path)
+        .unwrap_or_else(|e| panic!("读取 {path} 失败(先运行 scripts/fetch-fonts.sh):{e}"));
+    build_entry(
+        "test-font".into(),
+        None,
+        "Test".into(),
+        "Regular".into(),
+        "0".into(),
+        path.into(),
+        bytes,
+    )
+    .expect("内置字体应能构建")
 }
 
 /// 固定几何的参数:默认 15mm 边距、gap 4/6;无页眉页码 → 各页行数一致
 fn base_params() -> GenerateParams {
     GenerateParams {
-        header: HeaderConfig { title: None, fields: vec![], page_number: false },
+        header: HeaderConfig {
+            title: None,
+            fields: vec![],
+            page_number: false,
+        },
         ..Default::default()
     }
 }
@@ -45,7 +58,9 @@ fn miaohong_cells_and_pages() {
     assert_eq!(pages[0].len(), 2, "12 格 / 11 列 = 2 行");
     assert_eq!(pages[0][0].len(), 11, "首行占满 11 格");
     assert_eq!(pages[0][1].len(), 1);
-    assert!(pages[0][0].iter().all(|c| matches!(&c.content, CellContent::Light(_))));
+    assert!(pages[0][0]
+        .iter()
+        .all(|c| matches!(&c.content, CellContent::Light(_))));
 }
 
 /// 混合模式:每字 [描红×t, 空×c];行首无示范
@@ -80,7 +95,9 @@ fn chaoxie_row_leading_demo() {
     let row = &pages[0][0];
     assert_eq!(row.len(), 9);
     assert!(matches!(&row[0].content, CellContent::Demo(c) if c == "永"));
-    assert!(row[1..].iter().all(|c| matches!(&c.content, CellContent::Empty)));
+    assert!(row[1..]
+        .iter()
+        .all(|c| matches!(&c.content, CellContent::Empty)));
 
     // 大文本:跨行时每行首都是当前练习字的示范
     let mut p2 = p.clone();
@@ -121,7 +138,11 @@ fn zuowen_continuous() {
             CellContent::Empty => String::new(),
         })
         .collect();
-    assert_eq!(row0, vec!["永", "和", "九", "年"], "连续模式换行即止,不补空格");
+    assert_eq!(
+        row0,
+        vec!["永", "和", "九", "年"],
+        "连续模式换行即止,不补空格"
+    );
     // 换行 → 第二行从新行开始
     assert!(matches!(&pages[0][1][0].content, CellContent::Light(s) if s == "岁"));
 }
@@ -161,7 +182,10 @@ fn too_many_pages_rejected() {
     p.text = "永".repeat(1000);
     let entry = font_entry("ShortStack-Regular.ttf");
     let err = layout_document(&p, &entry).unwrap_err();
-    assert!(matches!(err, super::LayoutError::TooManyPages), "got: {err:?}");
+    assert!(
+        matches!(err, super::LayoutError::TooManyPages),
+        "got: {err:?}"
+    );
 }
 
 /// 页码回填与页眉只在首页
@@ -174,7 +198,10 @@ fn header_first_page_and_page_numbers() {
     p.text = "永".repeat(50);
     p.header = HeaderConfig {
         title: Some("兰亭集序".into()),
-        fields: vec![HeaderField { label: "班级".into(), value: String::new() }],
+        fields: vec![HeaderField {
+            label: "班级".into(),
+            value: String::new(),
+        }],
         page_number: true,
     };
     let entry = font_entry("LXGWWenKai-Regular.ttf"); // 标题是中文,用中文字体
@@ -228,8 +255,12 @@ fn sixian_four_lines_and_baseline() {
     let mut line_ys: Vec<f64> = Vec::new();
     for op in &doc.pages[0].ops {
         if let IrOp::Stroke { path, .. } = op {
-            if let [super::ir::PathEl::Move(x0, y), super::ir::PathEl::Line(x1, y1)] = &path.els[..] {
-                if (y - y1).abs() < 1e-9 && x1 > x0 && !line_ys.iter().any(|v| (*v - y).abs() < 0.01) {
+            if let [super::ir::PathEl::Move(x0, y), super::ir::PathEl::Line(x1, y1)] = &path.els[..]
+            {
+                if (y - y1).abs() < 1e-9
+                    && x1 > x0
+                    && !line_ys.iter().any(|v| (*v - y).abs() < 0.01)
+                {
                     line_ys.push(*y);
                 }
             }
@@ -259,8 +290,7 @@ fn sixian_font_size_fits_x_zone() {
     p.text = "x".into();
     let entry = font_entry("ShortStack-Regular.ttf");
     let doc = layout_document(&p, &entry).unwrap();
-    let size = doc
-        .pages[0]
+    let size = doc.pages[0]
         .ops
         .iter()
         .find_map(|op| match op {
@@ -275,7 +305,11 @@ fn sixian_font_size_fits_x_zone() {
     let asc_em = info.ascender / upm;
     let h = p.line_height();
     assert!(size * x_em <= h + 0.5, "x 高不越中格:{}", size * x_em);
-    assert!(size * asc_em <= 2.0 * h + 0.5, "ascender 不越顶线:{}", size * asc_em);
+    assert!(
+        size * asc_em <= 2.0 * h + 0.5,
+        "ascender 不越顶线:{}",
+        size * asc_em
+    );
     // 未被钳制时应恰好填满中格
     if size * asc_em < 2.0 * h - 0.5 {
         assert!((size * x_em - h).abs() < 0.5);
@@ -299,20 +333,28 @@ fn shaper_basic() {
 #[test]
 fn layout_smoke_all_papers() {
     let entry = font_entry("LXGWWenKai-Regular.ttf");
-    for paper in [PaperKind::MiZi, PaperKind::TianZi, PaperKind::HuiGong, PaperKind::ZuoWen, PaperKind::SiXian, PaperKind::HengXian] {
+    for paper in [
+        PaperKind::MiZi,
+        PaperKind::TianZi,
+        PaperKind::HuiGong,
+        PaperKind::ZuoWen,
+        PaperKind::SiXian,
+        PaperKind::HengXian,
+    ] {
         let mut p = base_params();
         p.paper = paper;
         p.text = "永和九年岁在癸丑".into();
         let doc = layout_document(&p, &entry).unwrap_or_else(|e| panic!("{paper:?} 布局失败:{e}"));
         assert!(!doc.pages[0].ops.is_empty(), "{paper:?} 首页应有绘制指令");
         assert!(
-            doc.pages[0].ops.iter().any(|op| matches!(op, IrOp::Glyphs { .. })),
+            doc.pages[0]
+                .ops
+                .iter()
+                .any(|op| matches!(op, IrOp::Glyphs { .. })),
             "{paper:?} 应有字形指令"
         );
     }
 }
-
-
 
 /// 练习纸中空格占一个空格(词间分隔/休整格)
 #[test]
@@ -324,7 +366,11 @@ fn space_occupies_a_cell_in_practice_paper() {
     let geo = Geometry::new(&p);
     let pages = paginate::paginate(&p, &geo);
     assert_eq!(pages[0][0].len(), 5);
-    assert_eq!(pages[0][0][2].content, CellContent::Empty, "第 3 格应为空格分隔");
+    assert_eq!(
+        pages[0][0][2].content,
+        CellContent::Empty,
+        "第 3 格应为空格分隔"
+    );
     assert!(matches!(&pages[0][0][3].content, CellContent::Light(c) if c == "c"));
 }
 
@@ -335,15 +381,16 @@ fn pinyin_strip_and_annotation() {
     p.text = "永和".into();
     p.mode = Mode::ChaoXie;
     p.copy_count = 1;
-    p.header = HeaderConfig { title: None, fields: vec![], page_number: false };
+    p.header = HeaderConfig {
+        title: None,
+        fields: vec![],
+        page_number: false,
+    };
     let geo_off = Geometry::new(&p);
     p.pinyin = true;
     let geo_on = Geometry::new(&p);
     assert_eq!(geo_on.pinyin_strip, paginate::PINYIN_STRIP);
-    assert!(
-        geo_on.row_h > geo_off.row_h,
-        "开启拼音后行高应包含拼音条"
-    );
+    assert!(geo_on.row_h > geo_off.row_h, "开启拼音后行高应包含拼音条");
 
     let entry = font_entry("LXGWWenKai-Regular.ttf");
     let doc = layout_document(&p, &entry).unwrap();
@@ -395,8 +442,14 @@ fn rtl_row_direction() {
     assert!(geo_rtl.rtl);
     assert!(geo_rtl.x_of(0) > geo_rtl.x_of(1), "RTL 列 0 在右");
     // RTL 镜像:RTL 列 0 与 LTR 最末列同位,反之亦然
-    assert!((geo_rtl.x_of(0) - geo_ltr.x_of(5)).abs() < 0.01, "RTL 行首 = LTR 行尾位置");
-    assert!((geo_rtl.x_of(5) - geo_ltr.x_of(0)).abs() < 0.01, "RTL 行尾 = LTR 行首位置");
+    assert!(
+        (geo_rtl.x_of(0) - geo_ltr.x_of(5)).abs() < 0.01,
+        "RTL 行首 = LTR 行尾位置"
+    );
+    assert!(
+        (geo_rtl.x_of(5) - geo_ltr.x_of(0)).abs() < 0.01,
+        "RTL 行尾 = LTR 行首位置"
+    );
 }
 
 /// 阿拉伯文本自动判定 RTL
@@ -440,7 +493,8 @@ fn sixian_default_cell_width_fits_letters() {
     let pitch = origins[1] - origins[0];
     let mut shaper = Shaper::new(&entry);
     let size = super::ruled::font_size(&shaper, &p);
-    let m_adv = super::advance_em(&shaper.shape("m")) * size;    assert!(
+    let m_adv = super::advance_em(&shaper.shape("m")) * size;
+    assert!(
         pitch >= m_adv + 1.0,
         "相邻字母间距({pitch:.1}) 应 ≥ m 步进({m_adv:.1}) + 1pt,不再挤压"
     );
@@ -460,8 +514,11 @@ fn hengxian_size_and_baseline_on_line() {
         let mut v: Vec<f64> = Vec::new();
         for op in &doc.pages[0].ops {
             if let IrOp::Stroke { path, .. } = op {
-                if let [super::ir::PathEl::Move(x0, y), super::ir::PathEl::Line(x1, y1)] = &path.els[..] {
-                    if (y - y1).abs() < 1e-9 && *x1 > *x0 && !v.iter().any(|e| (*e - y).abs() < 0.5) {
+                if let [super::ir::PathEl::Move(x0, y), super::ir::PathEl::Line(x1, y1)] =
+                    &path.els[..]
+                {
+                    if (y - y1).abs() < 1e-9 && *x1 > *x0 && !v.iter().any(|e| (*e - y).abs() < 0.5)
+                    {
                         v.push(*y);
                     }
                 }
@@ -473,7 +530,10 @@ fn hengxian_size_and_baseline_on_line() {
     assert!(!line_y.is_empty());
     let first_line = line_y[0];
     let lh = p.line_height();
-    assert!((first_line - (p.margins_mm.top * MM_TO_PT + lh)).abs() < 0.01, "横线在行带底部");
+    assert!(
+        (first_line - (p.margins_mm.top * MM_TO_PT + lh)).abs() < 0.01,
+        "横线在行带底部"
+    );
 
     // 基线 = 横线上移一个下伸高度;字号 = 0.68×行距(默认 10mm)
     let mut shaper = Shaper::new(&entry);
@@ -483,7 +543,10 @@ fn hengxian_size_and_baseline_on_line() {
     let expected_baseline = first_line - desc_pt;
     for op in &doc.pages[0].ops {
         if let IrOp::Glyphs { origin, size, .. } = op {
-            assert!((origin.1 - expected_baseline).abs() < 0.01, "基线应比横线高一个下伸高度");
+            assert!(
+                (origin.1 - expected_baseline).abs() < 0.01,
+                "基线应比横线高一个下伸高度"
+            );
             assert!((size - lh * 0.68).abs() < 0.01, "字号应为 0.68×行距");
         }
     }
@@ -518,7 +581,10 @@ fn ttb_vertical_columns_right_to_left() {
     let (_, x1b, y12) = find("和").clone();
     let (_, x2, y21) = find("九").clone();
 
-    assert!(in_col(x1, col0) && in_col(x1b, col0), "永和 同在第一列(最右)");
+    assert!(
+        in_col(x1, col0) && in_col(x1b, col0),
+        "永和 同在第一列(最右)"
+    );
     assert!(y12 > y11, "列内自上而下:和 在 永 下方");
     assert!(in_col(x2, col1), "第二列(九)在第一列左侧一列");
     assert!(y21 < y12, "第二列从头开始");
@@ -547,7 +613,10 @@ fn zuowen_chaoxie_shows_demo_text() {
     let pages = paginate::paginate(&p, &geo);
     let cells: Vec<&CellContent> = pages[0][0].iter().map(|c| &c.content).collect();
     assert_eq!(cells.len(), 4);
-    assert!(cells.iter().all(|c| matches!(c, CellContent::Demo(_))), "全文应为示范色:{cells:?}");
+    assert!(
+        cells.iter().all(|c| matches!(c, CellContent::Demo(_))),
+        "全文应为示范色:{cells:?}"
+    );
     // 其余行保持空白格子(由画满整页的网格提供)
     assert_eq!(pages[0].len(), 1, "只有含文本的一行,其余是空网格");
 }

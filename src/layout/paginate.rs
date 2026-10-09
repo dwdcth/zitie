@@ -55,14 +55,23 @@ impl Geometry {
         let bottom = p.margins_mm.bottom * super::model::MM_TO_PT;
         let content_w = super::model::A4_W_PT - left - right;
 
-        let has_title = p.header.title.as_deref().is_some_and(|t| !t.trim().is_empty());
+        let has_title = p
+            .header
+            .title
+            .as_deref()
+            .is_some_and(|t| !t.trim().is_empty());
         let has_fields = p.header.fields.iter().any(|f| !f.label.trim().is_empty());
-        let header_h = (if has_title { 30.0 } else { 0.0 }) + (if has_fields { 20.0 } else { 0.0 })
+        let header_h = (if has_title { 30.0 } else { 0.0 })
+            + (if has_fields { 20.0 } else { 0.0 })
             + if has_title || has_fields { 8.0 } else { 0.0 };
         let pn_h = if p.header.page_number { 14.0 } else { 0.0 };
 
         // 拼音条仅对方块格纸型生效
-        let pinyin_strip = if p.pinyin && !p.paper.is_ruled() { PINYIN_STRIP } else { 0.0 };
+        let pinyin_strip = if p.pinyin && !p.paper.is_ruled() {
+            PINYIN_STRIP
+        } else {
+            0.0
+        };
         let (cell_w, row_h) = match p.paper {
             PaperKind::SiXian => (p.cell_width(), p.line_height() * 3.0),
             PaperKind::HengXian => (p.cell_width(), p.line_height()),
@@ -84,17 +93,13 @@ impl Geometry {
             top_first: top + header_h,
             top_rest: top,
             content_w,
-            cols: p
-                .cols_per_row
-                .map(|c| c as usize)
-                .unwrap_or_else(|| {
-                    if cell_w <= 0.0 {
-                        1
-                    } else {
-                        (((content_w + p.col_gap_pt) / (cell_w + p.col_gap_pt)).floor() as usize)
-                            .max(1)
-                    }
-                }),
+            cols: p.cols_per_row.map(|c| c as usize).unwrap_or_else(|| {
+                if cell_w <= 0.0 {
+                    1
+                } else {
+                    (((content_w + p.col_gap_pt) / (cell_w + p.col_gap_pt)).floor() as usize).max(1)
+                }
+            }),
             rows_first: fit(ch_first.max(row_h)),
             rows_rest: fit(ch_rest.max(row_h)),
             cell_w,
@@ -201,7 +206,10 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
                 if cur_row.len() >= line_cap(pages.len() - 1) {
                     flush_row!(false);
                 }
-                cur_row.push(Cell { col: cur_row.len(), content: CellContent::Empty });
+                cur_row.push(Cell {
+                    col: cur_row.len(),
+                    content: CellContent::Empty,
+                });
             }
             Token::Cluster(c) => {
                 // 作文纸连续填格;抄写模式 = 全文以示范色印一遍 + 空格照抄
@@ -220,10 +228,16 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
                     }
                     // 行首/列首示范:该行第一个单元属于某 cluster 时补一个示范格(不占练习配额)
                     if want_demo && demo_pending && cur_row.is_empty() {
-                        cur_row.push(Cell { col: 0, content: CellContent::Demo(c.clone()) });
+                        cur_row.push(Cell {
+                            col: 0,
+                            content: CellContent::Demo(c.clone()),
+                        });
                         demo_pending = false;
                     }
-                    cur_row.push(Cell { col: cur_row.len(), content: unit });
+                    cur_row.push(Cell {
+                        col: cur_row.len(),
+                        content: unit,
+                    });
                 }
             }
         }

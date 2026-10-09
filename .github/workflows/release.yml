@@ -1,0 +1,133 @@
+# 打 tag(v*)触发:多平台构建 → 发布 GitHub Release(含字体,开箱即用)
+# → 构建多架构 Docker 镜像推送 ghcr.io/dwdcth/zitie
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            ext: ""
+            use-cross: false
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            ext: ""
+            use-cross: true
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            ext: ""
+            use-cross: false
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: ""
+            use-cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+            use-cross: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.use-cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      # 打包:二进制 + 前端 + 内置字体(OFL,随附许可证)+ 下载脚本 + README
+      - name: Package
+        shell: bash
+        run: |
+          ./scripts/fetch-fonts.sh
+          staging="zitie-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "$staging"
+          cp "target/${{ matrix.target }}/release/zitie${{ matrix.ext }}" "$staging/"
+          cp -r static assets scripts README.md "$staging/"
+          # 清理打包残留
+          rm -rf "$staging/scripts/__pycache__" 2>/dev/null || true
+          if [ "${{ matrix.target }}" = "x86_64-pc-windows-msvc" ]; then
+            # windows runner 自带 bsdtar,可按扩展名生成 zip
+            tar -a -cf "$staging.zip" "$staging"
+            echo "ASSET=$staging.zip" >> "$GITHUB_ENV"
+          else
+            tar czf "$staging.tar.gz" "$staging"
+            echo "ASSET=$staging.tar.gz" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET }}
+          generate_release_notes: true
+
+  docker:
+    name: docker (amd64 + arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

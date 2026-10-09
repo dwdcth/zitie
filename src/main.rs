@@ -27,12 +27,17 @@ async fn run() -> anyhow::Result<()> {
     let db = zitie::db::init(&cfg.db_path()).await?;
 
     // 字体
-    let font_store = Arc::new(zitie::fonts::FontStore::load_builtin(&cfg.builtin_fonts_dir())?);
+    let font_store = Arc::new(zitie::fonts::FontStore::load_builtin(
+        &cfg.builtin_fonts_dir(),
+    )?);
     font_store.load_uploads(&db, &cfg.fonts_dir()).await?;
     tracing::info!(count = font_store.list().len(), "fonts loaded");
 
     // PDF 缓存 + 周期清理
-    let cache = Arc::new(zitie::pdfcache::PdfCache::new(cfg.cache_dir(), cfg.cache_quota_mb)?);
+    let cache = Arc::new(zitie::pdfcache::PdfCache::new(
+        cfg.cache_dir(),
+        cfg.cache_quota_mb,
+    )?);
     {
         let cache = cache.clone();
         tokio::spawn(async move {

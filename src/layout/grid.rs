@@ -44,7 +44,15 @@ pub fn paint_page(
                         ops.push(op);
                     }
                     if geo.pinyin_strip > 0.0 {
-                        place_pinyin(ops, shaper, &cell.content, x, y - geo.pinyin_strip, geo, params);
+                        place_pinyin(
+                            ops,
+                            shaper,
+                            &cell.content,
+                            x,
+                            y - geo.pinyin_strip,
+                            geo,
+                            params,
+                        );
                     }
                 }
             }
@@ -97,7 +105,9 @@ fn place_pinyin(
         CellContent::Empty => return,
         CellContent::Light(c) | CellContent::Solid(c) | CellContent::Demo(c) => c.as_str(),
     };
-    let Some(py) = super::pinyin::pinyin_of(cluster) else { return };
+    let Some(py) = super::pinyin::pinyin_of(cluster) else {
+        return;
+    };
     let strip_h = geo.pinyin_strip;
     let size = strip_h * 0.62;
     let w = super::text_run_width(shaper, &py, size);
@@ -115,9 +125,23 @@ fn place_pinyin(
 }
 
 /// 格子装饰线。
-fn paint_cell_frame(ops: &mut Vec<IrOp>, paper: PaperKind, x: f64, y: f64, s: f64, color: &super::model::Color) {
-    let solid = StrokeSpec { color: *color, width: OUTER_WIDTH, dash: None };
-    ops.push(IrOp::Stroke { path: IrPath::rect(x, y, s, s), style: solid });
+fn paint_cell_frame(
+    ops: &mut Vec<IrOp>,
+    paper: PaperKind,
+    x: f64,
+    y: f64,
+    s: f64,
+    color: &super::model::Color,
+) {
+    let solid = StrokeSpec {
+        color: *color,
+        width: OUTER_WIDTH,
+        dash: None,
+    };
+    ops.push(IrOp::Stroke {
+        path: IrPath::rect(x, y, s, s),
+        style: solid,
+    });
     let dashed = StrokeSpec {
         color: *color,
         width: GUIDE_WIDTH,
@@ -127,20 +151,45 @@ fn paint_cell_frame(ops: &mut Vec<IrOp>, paper: PaperKind, x: f64, y: f64, s: f6
     match paper {
         PaperKind::MiZi => {
             // 十字中线 + 对角线(虚线)
-            ops.push(IrOp::Stroke { path: IrPath::line(x + mid, y, x + mid, y + s), style: dashed.clone() });
-            ops.push(IrOp::Stroke { path: IrPath::line(x, y + mid, x + s, y + mid), style: dashed.clone() });
-            ops.push(IrOp::Stroke { path: IrPath::line(x, y, x + s, y + s), style: dashed.clone() });
-            ops.push(IrOp::Stroke { path: IrPath::line(x + s, y, x, y + s), style: dashed });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x + mid, y, x + mid, y + s),
+                style: dashed.clone(),
+            });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x, y + mid, x + s, y + mid),
+                style: dashed.clone(),
+            });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x, y, x + s, y + s),
+                style: dashed.clone(),
+            });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x + s, y, x, y + s),
+                style: dashed,
+            });
         }
         PaperKind::TianZi => {
-            ops.push(IrOp::Stroke { path: IrPath::line(x + mid, y, x + mid, y + s), style: dashed.clone() });
-            ops.push(IrOp::Stroke { path: IrPath::line(x, y + mid, x + s, y + mid), style: dashed });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x + mid, y, x + mid, y + s),
+                style: dashed.clone(),
+            });
+            ops.push(IrOp::Stroke {
+                path: IrPath::line(x, y + mid, x + s, y + mid),
+                style: dashed,
+            });
         }
         PaperKind::HuiGong => {
             // 内缩 1/4 的内框(实线细)
             let inset = s * 0.25;
-            let inner = StrokeSpec { color: *color, width: GUIDE_WIDTH, dash: None };
-            ops.push(IrOp::Stroke { path: IrPath::rect(x + inset, y + inset, s - 2.0 * inset, s - 2.0 * inset), style: inner });
+            let inner = StrokeSpec {
+                color: *color,
+                width: GUIDE_WIDTH,
+                dash: None,
+            };
+            ops.push(IrOp::Stroke {
+                path: IrPath::rect(x + inset, y + inset, s - 2.0 * inset, s - 2.0 * inset),
+                style: inner,
+            });
         }
         PaperKind::ZuoWen => {} // 仅外框
         _ => unreachable!("线格纸型由 ruled 模块处理"),
@@ -184,7 +233,12 @@ fn place_in_cell(
             let info = shaper.face_info();
             let asc = info.ascender / info.units_per_em;
             let desc = info.descender / info.units_per_em;
-            (adv.max(1e-6), (asc - desc).max(1e-6), adv / 2.0, (asc + desc) / 2.0)
+            (
+                adv.max(1e-6),
+                (asc - desc).max(1e-6),
+                adv / 2.0,
+                (asc + desc) / 2.0,
+            )
         }
     };
 

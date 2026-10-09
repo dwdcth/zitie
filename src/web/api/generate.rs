@@ -59,14 +59,22 @@ pub async fn generate(
     }
 
     // 3. 完整布局:得到页数并复核页数上限
-    let ir = layout::layout_document(&params, &entry)
-        .map_err(|e| AppError::invalid(e.to_string()))?;
+    let ir =
+        layout::layout_document(&params, &entry).map_err(|e| AppError::invalid(e.to_string()))?;
 
     // 4. 参数落盘(供 PDF 惰性渲染)+ 写入历史
     let hash = canon::hash_params(&params);
     let canon_json = canon::canonical_json(&params);
     state.cache.store_params(&hash, &canon_json);
-    record_history(&state, &user.id, &hash, &canon_json, &params, ir.page_count()).await;
+    record_history(
+        &state,
+        &user.id,
+        &hash,
+        &canon_json,
+        &params,
+        ir.page_count(),
+    )
+    .await;
 
     Ok(Json(GenerateResult {
         url: format!("/api/pdf/{hash}.pdf"),

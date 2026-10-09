@@ -37,7 +37,14 @@ pub fn render_pdf(ir: &DocumentIr, store: &FontStore) -> Result<Vec<u8>, RenderE
                         surface.draw_path(&kp);
                     }
                 }
-                IrOp::Glyphs { origin, size, font_id, color, text, glyphs } => {
+                IrOp::Glyphs {
+                    origin,
+                    size,
+                    font_id,
+                    color,
+                    text,
+                    glyphs,
+                } => {
                     let font: Font = store
                         .get(font_id)
                         .map(|e| e.krilla_font.clone())
@@ -86,12 +93,10 @@ fn to_stroke(s: &StrokeSpec) -> Stroke {
     Stroke {
         paint: to_paint(s.color),
         width: s.width as f32,
-        dash: s.dash
-            .as_ref()
-            .map(|(array, offset)| StrokeDash {
-                array: array.iter().map(|&v| v as f32).collect(),
-                offset: *offset as f32,
-            }),
+        dash: s.dash.as_ref().map(|(array, offset)| StrokeDash {
+            array: array.iter().map(|&v| v as f32).collect(),
+            offset: *offset as f32,
+        }),
         ..Default::default()
     }
 }
@@ -130,7 +135,10 @@ mod tests {
             text: text.into(),
             header: HeaderConfig {
                 title: Some("字帖练习".into()),
-                fields: vec![HeaderField { label: "姓名".into(), value: String::new() }],
+                fields: vec![HeaderField {
+                    label: "姓名".into(),
+                    value: String::new(),
+                }],
                 page_number: true,
             },
             ..Default::default()
@@ -141,15 +149,29 @@ mod tests {
     #[test]
     fn pdf_smoke_all_papers_modes() {
         let store = font_store();
-        for paper in [PaperKind::MiZi, PaperKind::TianZi, PaperKind::HuiGong, PaperKind::ZuoWen, PaperKind::SiXian, PaperKind::HengXian] {
+        for paper in [
+            PaperKind::MiZi,
+            PaperKind::TianZi,
+            PaperKind::HuiGong,
+            PaperKind::ZuoWen,
+            PaperKind::SiXian,
+            PaperKind::HengXian,
+        ] {
             for mode in [Mode::MiaoHong, Mode::ChaoXie, Mode::HunHe, Mode::ChunTie] {
                 let ir = sample_ir(paper, mode, "永和九年 abc");
                 let pdf = render_pdf(&ir, &store)
                     .unwrap_or_else(|e| panic!("{paper:?}/{mode:?} 渲染失败:{e}"));
                 assert!(pdf.starts_with(b"%PDF"), "{paper:?}/{mode:?} 应为 PDF");
                 let tail = &pdf[pdf.len().saturating_sub(64)..];
-                assert!(tail.windows(5).any(|w| w == b"%%EOF"), "{paper:?}/{mode:?} 应有 EOF 标记");
-                assert!(pdf.len() > 3_000, "{paper:?}/{mode:?} PDF 过小:{}", pdf.len());
+                assert!(
+                    tail.windows(5).any(|w| w == b"%%EOF"),
+                    "{paper:?}/{mode:?} 应有 EOF 标记"
+                );
+                assert!(
+                    pdf.len() > 3_000,
+                    "{paper:?}/{mode:?} PDF 过小:{}",
+                    pdf.len()
+                );
             }
         }
     }
@@ -169,6 +191,10 @@ mod tests {
         let store = font_store();
         let ir = sample_ir(PaperKind::MiZi, Mode::MiaoHong, "永和");
         let pdf = render_pdf(&ir, &store).unwrap();
-        assert!(pdf.len() < 1_000_000, "PDF 应小于 1MB,实际 {} 字节", pdf.len());
+        assert!(
+            pdf.len() < 1_000_000,
+            "PDF 应小于 1MB,实际 {} 字节",
+            pdf.len()
+        );
     }
 }

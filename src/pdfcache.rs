@@ -39,7 +39,12 @@ impl PdfCache {
     pub fn get_pdf(&self, hash: &str) -> Option<Vec<u8>> {
         let bytes = std::fs::read(self.pdf_path(hash)).ok()?;
         // 更新访问时间(打开即触碰 mtime,不写内容)
-        if let Ok(f) = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(self.touch_path(hash)) {
+        if let Ok(f) = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(self.touch_path(hash))
+        {
             let _ = f.set_modified(SystemTime::now());
         }
         Some(bytes)
@@ -92,7 +97,9 @@ impl PdfCache {
         };
         for entry in rd.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
-            let Some(hash) = name.strip_suffix(".pdf") else { continue };
+            let Some(hash) = name.strip_suffix(".pdf") else {
+                continue;
+            };
             let meta = match entry.metadata() {
                 Ok(m) => m,
                 Err(_) => continue,

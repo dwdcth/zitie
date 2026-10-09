@@ -49,11 +49,7 @@ fn valid_uuid(s: &str) -> bool {
     uuid::Uuid::parse_str(s).is_ok()
 }
 
-pub async fn anon_user(
-    State(state): State<SharedState>,
-    req: Request,
-    next: Next,
-) -> Response {
+pub async fn anon_user(State(state): State<SharedState>, req: Request, next: Next) -> Response {
     let jar = CookieJar::from_headers(req.headers());
     let now = now_ms();
 

@@ -6,13 +6,22 @@ use axum::Router;
 use common::{req, test_app};
 use tower::ServiceExt;
 
-async fn generate(app: &mut Router, cookie: &str, params: serde_json::Value) -> (StatusCode, serde_json::Value) {
+async fn generate(
+    app: &mut Router,
+    cookie: &str,
+    params: serde_json::Value,
+) -> (StatusCode, serde_json::Value) {
     let (status, body, _) = req(app, "POST", "/api/generate", Some(params), Some(cookie)).await;
     let v = serde_json::from_slice(&body).unwrap_or(serde_json::Value::Null);
     (status, v)
 }
 
-async fn get_pdf(app: &mut Router, uri: &str, cookie: Option<&str>, extra: &[(&str, &str)]) -> axum::http::Response<Body> {
+async fn get_pdf(
+    app: &mut Router,
+    uri: &str,
+    cookie: Option<&str>,
+    extra: &[(&str, &str)],
+) -> axum::http::Response<Body> {
     let mut builder = Request::builder().uri(uri);
     if let Some(c) = cookie {
         builder = builder.header("cookie", c);
@@ -53,13 +62,24 @@ async fn generate_then_fetch_pdf_full_pipeline() {
     // 惰性渲染获取 PDF
     let resp = get_pdf(&mut app, &url, None, &[]).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    assert_eq!(resp.headers().get("content-type").unwrap(), "application/pdf");
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/pdf"
+    );
     assert_eq!(
         resp.headers().get("cache-control").unwrap(),
         "public, max-age=31536000, immutable"
     );
-    let etag = resp.headers().get("etag").unwrap().to_str().unwrap().to_string();
-    let bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024 * 1024).await.unwrap();
+    let etag = resp
+        .headers()
+        .get("etag")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024 * 1024)
+        .await
+        .unwrap();
     assert!(bytes.starts_with(b"%PDF"));
 
     // 二次请求(磁盘缓存)+ 304 协商
@@ -142,6 +162,8 @@ async fn empty_text_blank_sheet() {
     assert_eq!(status, StatusCode::OK, "空文本应生成空白练习纸: {v:?}");
     let url = v["url"].as_str().unwrap();
     let resp = get_pdf(&mut app, url, None, &[]).await;
-    let bytes: Bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024 * 1024).await.unwrap();
+    let bytes: Bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024 * 1024)
+        .await
+        .unwrap();
     assert!(bytes.starts_with(b"%PDF"));
 }

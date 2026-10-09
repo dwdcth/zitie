@@ -250,7 +250,12 @@ impl Margins {
 
 impl Default for Margins {
     fn default() -> Self {
-        Self { top: 15.0, right: 15.0, bottom: 15.0, left: 15.0 }
+        Self {
+            top: 15.0,
+            right: 15.0,
+            bottom: 15.0,
+            left: 15.0,
+        }
     }
 }
 
@@ -285,7 +290,11 @@ impl HeaderConfig {
 
 impl Default for HeaderConfig {
     fn default() -> Self {
-        Self { title: None, fields: Vec::new(), page_number: true }
+        Self {
+            title: None,
+            fields: Vec::new(),
+            page_number: true,
+        }
     }
 }
 

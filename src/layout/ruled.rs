@@ -42,7 +42,11 @@ pub fn paint_page(
     rows: &PageRows,
 ) {
     let colors = &params.colors;
-    let line_style = StrokeSpec { color: colors.grid, width: LINE_WIDTH, dash: None };
+    let line_style = StrokeSpec {
+        color: colors.grid,
+        width: LINE_WIDTH,
+        dash: None,
+    };
     let x_right = geo.left + geo.content_w;
     let font_size = font_size(shaper, params);
 
@@ -63,7 +67,10 @@ pub fn paint_page(
                 // 横线在行带底部,作为下伸部的底线:基线上移一个下伸高度,
                 // 字母整体悬于线上,下伸字母(q/y/g/p)底部恰好触线而不穿过
                 let ly = y + params.line_height();
-                ops.push(IrOp::Stroke { path: IrPath::hline(geo.left, x_right, ly), style: line_style.clone() });
+                ops.push(IrOp::Stroke {
+                    path: IrPath::hline(geo.left, x_right, ly),
+                    style: line_style.clone(),
+                });
                 let info = shaper.face_info();
                 let desc_pt = (info.descender / info.units_per_em).abs() * font_size;
                 ly - desc_pt
@@ -106,7 +113,11 @@ pub fn paint_page(
 fn sixian_font_size(shaper: &Shaper<'_>, h: f64) -> f64 {
     let info = shaper.face_info();
     let upm = info.units_per_em;
-    let x_em = info.x_height.map(|v| v / upm).filter(|v| *v > 0.1).unwrap_or(0.5);
+    let x_em = info
+        .x_height
+        .map(|v| v / upm)
+        .filter(|v| *v > 0.1)
+        .unwrap_or(0.5);
     let mut size = h / x_em;
     let asc_em = info.ascender / upm;
     if asc_em > 0.0 && asc_em * size > 2.0 * h {

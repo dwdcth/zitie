@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use metrics::{FontError, FontFaceInfo};
-use std::sync::RwLock;
 use sha2::Digest;
+use std::sync::RwLock;
 
 /// 内置字体清单 fonts.json 的条目。
 #[derive(Debug, serde::Deserialize)]
@@ -68,20 +68,22 @@ pub enum StoreError {
 
 impl FontStore {
     pub fn empty() -> Self {
-        Self { entries: RwLock::new(HashMap::new()) }
+        Self {
+            entries: RwLock::new(HashMap::new()),
+        }
     }
 
     /// 从 assets/fonts/fonts.json 加载内置字体。
     pub fn load_builtin(dir: &Path) -> Result<Self, StoreError> {
         let manifest_path = dir.join("fonts.json");
-        let manifest: BuiltinFontsManifest = serde_json::from_str(
-            &std::fs::read_to_string(&manifest_path)
-                .map_err(|e| StoreError::FontsDir(format!(
+        let manifest: BuiltinFontsManifest =
+            serde_json::from_str(&std::fs::read_to_string(&manifest_path).map_err(|e| {
+                StoreError::FontsDir(format!(
                     "无法读取 {}: {e}\n内置字体清单缺失,请检查部署目录",
                     manifest_path.display()
-                )))?,
-        )
-        .map_err(|e| StoreError::FontsDir(format!("fonts.json 解析失败: {e}")))?;
+                ))
+            })?)
+            .map_err(|e| StoreError::FontsDir(format!("fonts.json 解析失败: {e}")))?;
 
         let store = Self::empty();
         for def in &manifest.fonts {
@@ -156,7 +158,10 @@ impl FontStore {
     }
 
     pub fn insert(&self, entry: FontEntry) {
-        self.entries.write().unwrap().insert(entry.id.clone(), Arc::new(entry));
+        self.entries
+            .write()
+            .unwrap()
+            .insert(entry.id.clone(), Arc::new(entry));
     }
 
     pub fn remove(&self, id: &str) {
@@ -188,13 +193,15 @@ impl FontStore {
     }
 
     /// 校验并构建上传字体(不落盘不入库,由调用方完成持久化)。
-    pub fn validate_and_build(bytes: Vec<u8>) -> Result<(FontFaceInfo, String, String, u32), FontError> {
+    pub fn validate_and_build(
+        bytes: Vec<u8>,
+    ) -> Result<(FontFaceInfo, String, String, u32), FontError> {
         let font = metrics::parse_font(&bytes, 0)?;
         let info = metrics::face_info(&font)?;
         let family = metrics::read_name(&font, metrics::FontName::Family)
             .unwrap_or_else(|| "未命名字体".into());
-        let subfamily =
-            metrics::read_name(&font, metrics::FontName::Subfamily).unwrap_or_else(|| "Regular".into());
+        let subfamily = metrics::read_name(&font, metrics::FontName::Subfamily)
+            .unwrap_or_else(|| "Regular".into());
         // 确保 krilla 一定能用它渲染
         if krilla::text::Font::new(bytes.to_vec().into(), 0).is_none() {
             return Err(FontError::Parse("krilla 无法加载该字体".into()));

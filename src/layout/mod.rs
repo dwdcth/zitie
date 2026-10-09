@@ -45,9 +45,13 @@ impl<'a> Shaper<'a> {
             .expect("FontEntry 构建时已验证过可解析,此处不应失败");
         let face = rustybuzz::Face::from_slice(&entry.bytes, entry.face_index)
             .expect("FontEntry 构建时已验证过可解析,此处不应失败");
-        let info = metrics::face_info(&font)
-            .expect("FontEntry 构建时已验证过可解析,此处不应失败");
-        Shaper { font, face, info, cache: HashMap::new() }
+        let info = metrics::face_info(&font).expect("FontEntry 构建时已验证过可解析,此处不应失败");
+        Shaper {
+            font,
+            face,
+            info,
+            cache: HashMap::new(),
+        }
     }
 
     pub fn face_info(&self) -> crate::fonts::metrics::FontFaceInfo {
@@ -162,7 +166,10 @@ pub fn validate(p: &GenerateParams) -> Result<(), LayoutError> {
     }
     let clusters = graphemes::cluster_count(&p.text);
     if clusters > model::MAX_CLUSTERS {
-        return Err(err(&format!("文本过长(当前 {clusters} 个字,上限 {})", model::MAX_CLUSTERS)));
+        return Err(err(&format!(
+            "文本过长(当前 {clusters} 个字,上限 {})",
+            model::MAX_CLUSTERS
+        )));
     }
     if let Some(t) = &p.header.title {
         if t.chars().count() > model::MAX_TITLE_CHARS {
@@ -181,7 +188,12 @@ pub fn validate(p: &GenerateParams) -> Result<(), LayoutError> {
         }
     }
     let m = &p.margins_mm;
-    for (name, v) in [("上", m.top), ("右", m.right), ("下", m.bottom), ("左", m.left)] {
+    for (name, v) in [
+        ("上", m.top),
+        ("右", m.right),
+        ("下", m.bottom),
+        ("左", m.left),
+    ] {
         if !(5.0..=40.0).contains(&v) {
             return Err(err(&format!("{name}边距须在 5–40mm 之间")));
         }
@@ -261,7 +273,11 @@ pub fn layout_document(
         if params.header.page_number {
             header::paint_page_number(&mut ops, params, &mut shaper, page_idx + 1, total);
         }
-        doc.pages.push(ir::PageIr { index: page_idx + 1, total, ops });
+        doc.pages.push(ir::PageIr {
+            index: page_idx + 1,
+            total,
+            ops,
+        });
     }
 
     Ok(doc)

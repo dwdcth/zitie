@@ -20,7 +20,10 @@ pub struct HistoryItem {
     pub created_at: i64,
 }
 
-pub async fn list(State(state): State<SharedState>, user: CurrentUser) -> AppResult<Json<Vec<HistoryItem>>> {
+pub async fn list(
+    State(state): State<SharedState>,
+    user: CurrentUser,
+) -> AppResult<Json<Vec<HistoryItem>>> {
     let rows = generation::Entity::find()
         .filter(generation::Column::UserId.eq(&user.id))
         .order_by_desc(generation::Column::CreatedAt)

@@ -30,7 +30,10 @@ pub fn router(state: SharedState) -> Router {
     // 需要匿名身份的路由(页面 + 业务 API)
     let identified = Router::new()
         .route("/", get(index))
-        .route("/api/preferences", get(api::preferences::get).put(api::preferences::put))
+        .route(
+            "/api/preferences",
+            get(api::preferences::get).put(api::preferences::put),
+        )
         .route("/api/fonts", get(api::fonts::list))
         .route(
             "/api/fonts",
@@ -40,10 +43,7 @@ pub fn router(state: SharedState) -> Router {
         )
         .route("/api/fonts/{id}", delete(api::fonts::remove))
         .route("/api/generate", post(api::generate::generate))
-        .route(
-            "/api/history",
-            get(api::history::list),
-        )
+        .route("/api/history", get(api::history::list))
         .route(
             "/api/history/{id}",
             get(api::history::get_params).delete(api::history::remove),
@@ -58,10 +58,7 @@ pub fn router(state: SharedState) -> Router {
 
     identified
         .merge(public)
-        .route(
-            "/static/{*path}",
-            get(serve_static).post(serve_static),
-        )
+        .route("/static/{*path}", get(serve_static).post(serve_static))
         .layer(axum::extract::DefaultBodyLimit::max(256 * 1024))
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state)
@@ -72,7 +69,10 @@ async fn index(State(state): State<SharedState>) -> Response {
         Ok(html) => (
             StatusCode::OK,
             [
-                (header::CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8")),
+                (
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static("text/html; charset=utf-8"),
+                ),
                 (header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
             ],
             html,

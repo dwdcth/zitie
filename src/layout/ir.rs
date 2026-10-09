@@ -63,11 +63,15 @@ impl IrPath {
     }
 
     pub fn hline(x0: f64, x1: f64, y: f64) -> Self {
-        IrPath { els: vec![PathEl::Move(x0, y), PathEl::Line(x1, y)] }
+        IrPath {
+            els: vec![PathEl::Move(x0, y), PathEl::Line(x1, y)],
+        }
     }
 
     pub fn line(x0: f64, y0: f64, x1: f64, y1: f64) -> Self {
-        IrPath { els: vec![PathEl::Move(x0, y0), PathEl::Line(x1, y1)] }
+        IrPath {
+            els: vec![PathEl::Move(x0, y0), PathEl::Line(x1, y1)],
+        }
     }
 
     pub fn is_empty(&self) -> bool {

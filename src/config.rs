@@ -16,7 +16,8 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
-        let data_dir = PathBuf::from(std::env::var("ZITIE_DATA_DIR").unwrap_or_else(|_| "data".into()));
+        let data_dir =
+            PathBuf::from(std::env::var("ZITIE_DATA_DIR").unwrap_or_else(|_| "data".into()));
         let assets_dir =
             PathBuf::from(std::env::var("ZITIE_ASSETS_DIR").unwrap_or_else(|_| "assets".into()));
         let static_dir =

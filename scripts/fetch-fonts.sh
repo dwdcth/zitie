@@ -44,4 +44,10 @@ if [[ $fail -ne 0 ]]; then
 fi
 
 echo "完成。字体校验和(用于 assets/fonts/fonts.json):"
-(cd "$DIR" && sha256sum -- *.ttf)
+(cd "$DIR" && for f in *.ttf; do
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$f"
+  else
+    shasum -a 256 "$f"  # macOS 兜底
+  fi
+done)

@@ -11,13 +11,22 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Generations::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Generations::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Generations::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Generations::UserId).string().not_null())
                     .col(ColumnDef::new(Generations::Hash).string().not_null())
                     .col(ColumnDef::new(Generations::Params).text().not_null())
                     .col(ColumnDef::new(Generations::Preview).string().not_null())
                     .col(ColumnDef::new(Generations::Pages).integer().not_null())
-                    .col(ColumnDef::new(Generations::CreatedAt).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(Generations::CreatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_generations_user")
@@ -54,7 +63,9 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.drop_table(Table::drop().table(Generations::Table).to_owned()).await?;
+        manager
+            .drop_table(Table::drop().table(Generations::Table).to_owned())
+            .await?;
         Ok(())
     }
 }

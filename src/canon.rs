@@ -56,7 +56,9 @@ pub fn hash_params(p: &GenerateParams) -> String {
 
 /// 校验哈希格式(64 位小写 hex),防路径穿越。
 pub fn is_valid_hash(s: &str) -> bool {
-    s.len() == 64 && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    s.len() == 64
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 #[cfg(test)]
@@ -72,15 +74,27 @@ mod tests {
 
     #[test]
     fn canonicalization_collapses_equivalents() {
-        let a = GenerateParams { text: "  永\r\n和\n".into(), ..Default::default() };
-        let b = GenerateParams { text: "永\n和".into(), ..Default::default() };
+        let a = GenerateParams {
+            text: "  永\r\n和\n".into(),
+            ..Default::default()
+        };
+        let b = GenerateParams {
+            text: "永\n和".into(),
+            ..Default::default()
+        };
         assert_eq!(hash_params(&a), hash_params(&b));
     }
 
     #[test]
     fn float_noise_collapsed() {
-        let a = GenerateParams { col_gap_pt: 4.0, ..Default::default() };
-        let b = GenerateParams { col_gap_pt: 3.9999999999, ..Default::default() };
+        let a = GenerateParams {
+            col_gap_pt: 4.0,
+            ..Default::default()
+        };
+        let b = GenerateParams {
+            col_gap_pt: 3.9999999999,
+            ..Default::default()
+        };
         assert_eq!(hash_params(&a), hash_params(&b));
     }
 

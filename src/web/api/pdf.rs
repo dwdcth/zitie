@@ -2,7 +2,6 @@
 //! 磁盘命中直接返回;未命中读 params 惰性渲染(spawn_blocking + 同哈希并发去重)。
 //! immutable + ETag:浏览器一次拉取后永不再请求同参数的字帖。
 
-
 use axum::extract::{Path, State};
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -29,11 +28,16 @@ pub async fn get_pdf(
 
     // 协商缓存
     let etag = format!("\"{hash}\"");
-    if let Some(if_none_match) = headers.get(header::IF_NONE_MATCH)
+    if let Some(if_none_match) = headers
+        .get(header::IF_NONE_MATCH)
         .and_then(|v| v.to_str().ok())
         .map(|v| v.to_owned())
     {
-        if if_none_match.split(',').map(str::trim).any(|t| t == etag || t == "*") {
+        if if_none_match
+            .split(',')
+            .map(str::trim)
+            .any(|t| t == etag || t == "*")
+        {
             return (
                 StatusCode::NOT_MODIFIED,
                 [(header::ETAG, HeaderValue::from_str(&etag).unwrap())],
@@ -107,19 +111,31 @@ impl PdfQuery {
 
 fn pdf_response(bytes: Vec<u8>, etag: &str, download: bool) -> Response {
     let disposition = if download {
-        format!("attachment; filename=\"zitie-{etag_trim}.pdf\"", etag_trim = etag.trim_matches('"'))
+        format!(
+            "attachment; filename=\"zitie-{etag_trim}.pdf\"",
+            etag_trim = etag.trim_matches('"')
+        )
     } else {
         "inline; filename=\"zitie.pdf\"".to_string()
     };
     let mut resp = bytes.into_response();
     let h = resp.headers_mut();
-    h.insert(header::CONTENT_TYPE, HeaderValue::from_static("application/pdf"));
-    h.insert(header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=31536000, immutable"));
+    h.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/pdf"),
+    );
+    h.insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, max-age=31536000, immutable"),
+    );
     h.insert(header::ETAG, HeaderValue::from_str(etag).unwrap());
     h.insert(
         header::CONTENT_DISPOSITION,
         HeaderValue::from_str(&disposition).unwrap(),
     );
-    h.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    h.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
     resp
 }

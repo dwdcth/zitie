@@ -40,7 +40,10 @@ pub fn tokenize(text: &str) -> Vec<Token> {
 
 /// 统计 cluster 数(用于上限校验与前端计数)。
 pub fn cluster_count(text: &str) -> usize {
-    tokenize(text).into_iter().filter(|t| matches!(t, Token::Cluster(_) | Token::Space)).count()
+    tokenize(text)
+        .into_iter()
+        .filter(|t| matches!(t, Token::Cluster(_) | Token::Space))
+        .count()
 }
 
 #[cfg(test)]
@@ -55,8 +58,14 @@ mod tests {
 
     #[test]
     fn combining_mark_is_one_cluster() {
-        assert_eq!(tokenize("e\u{301}"), vec![Token::Cluster("e\u{301}".into())]);
-        assert_eq!(tokenize("か\u{3099}"), vec![Token::Cluster("か\u{3099}".into())]);
+        assert_eq!(
+            tokenize("e\u{301}"),
+            vec![Token::Cluster("e\u{301}".into())]
+        );
+        assert_eq!(
+            tokenize("か\u{3099}"),
+            vec![Token::Cluster("か\u{3099}".into())]
+        );
     }
 
     #[test]
@@ -82,10 +91,13 @@ mod tests {
 
     #[test]
     fn fullwidth_space_is_space() {
-        assert_eq!(tokenize("a\u{3000}b"), vec![
-            Token::Cluster("a".into()),
-            Token::Space,
-            Token::Cluster("b".into()),
-        ]);
+        assert_eq!(
+            tokenize("a\u{3000}b"),
+            vec![
+                Token::Cluster("a".into()),
+                Token::Space,
+                Token::Cluster("b".into()),
+            ]
+        );
     }
 }
