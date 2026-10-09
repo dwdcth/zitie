@@ -535,3 +535,19 @@ fn ttb_ignored_on_ruled_paper() {
     assert!(!p.direction.is_ttb(p.paper.is_ruled()), "线格纸型忽略竖排");
     assert!(!geo.rtl || true);
 }
+
+/// 作文纸+抄写:全文以示范色印一遍(供照抄),不再是空白纸
+#[test]
+fn zuowen_chaoxie_shows_demo_text() {
+    let mut p = base_params();
+    p.paper = PaperKind::ZuoWen;
+    p.mode = Mode::ChaoXie;
+    p.text = "永和九年".into();
+    let geo = Geometry::new(&p);
+    let pages = paginate::paginate(&p, &geo);
+    let cells: Vec<&CellContent> = pages[0][0].iter().map(|c| &c.content).collect();
+    assert_eq!(cells.len(), 4);
+    assert!(cells.iter().all(|c| matches!(c, CellContent::Demo(_))), "全文应为示范色:{cells:?}");
+    // 其余行保持空白格子(由画满整页的网格提供)
+    assert_eq!(pages[0].len(), 1, "只有含文本的一行,其余是空网格");
+}

@@ -265,7 +265,7 @@ function updateVisibility() {
   $('[data-for="cell-width"]').style.display = ruled ? '' : 'none';
   $('[data-for="trace"]').style.display = usesTrace ? '' : 'none';
   $('[data-for="copy"]').style.display = usesCopy ? '' : 'none';
-  $('[data-for="demo"]').style.display = state.mode === 'chaoxie' ? '' : 'none';
+  $('[data-for="demo"]').style.display = state.mode === 'chaoxie' && state.paper !== 'zuowen' ? '' : 'none';
   $('[data-for="pinyin"]').style.display = ruled ? 'none' : '';
   // 竖排仅对方块格纸型有意义;线格纸型上禁用该选项
   const ttbOpt = document.querySelector('select[name="direction"] option[value="ttb-rtl"]');

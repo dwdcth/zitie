@@ -204,11 +204,11 @@ pub fn paginate(p: &GenerateParams, geo: &Geometry) -> Vec<PageRows> {
                 cur_row.push(Cell { col: cur_row.len(), content: CellContent::Empty });
             }
             Token::Cluster(c) => {
-                // 作文纸连续填格
+                // 作文纸连续填格;抄写模式 = 全文以示范色印一遍 + 空格照抄
                 let units: Vec<CellContent> = if continuous {
                     vec![match p.mode {
                         Mode::MiaoHong | Mode::HunHe => CellContent::Light(c.clone()),
-                        Mode::ChaoXie => CellContent::Empty,
+                        Mode::ChaoXie => CellContent::Demo(c.clone()),
                         Mode::ChunTie => CellContent::Solid(c.clone()),
                     }]
                 } else {
