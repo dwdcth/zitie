@@ -446,7 +446,7 @@ fn sixian_default_cell_width_fits_letters() {
     );
 }
 
-/// 单横线:字号 = 0.68×行距,基线压在横线上
+/// 单横线:字号 = 0.68×行距,横线是下伸部底线(字母不穿线)
 #[test]
 fn hengxian_size_and_baseline_on_line() {
     let mut p = base_params();
@@ -475,10 +475,15 @@ fn hengxian_size_and_baseline_on_line() {
     let lh = p.line_height();
     assert!((first_line - (p.margins_mm.top * MM_TO_PT + lh)).abs() < 0.01, "横线在行带底部");
 
-    // 字母基线 = 横线;字号 = 0.68 × 行距(默认 10mm)
+    // 基线 = 横线上移一个下伸高度;字号 = 0.68×行距(默认 10mm)
+    let mut shaper = Shaper::new(&entry);
+    let size = super::ruled::font_size(&shaper, &p);
+    let info = shaper.face_info();
+    let desc_pt = (info.descender / info.units_per_em).abs() * size;
+    let expected_baseline = first_line - desc_pt;
     for op in &doc.pages[0].ops {
         if let IrOp::Glyphs { origin, size, .. } = op {
-            assert!((origin.1 - first_line).abs() < 0.01, "基线应压在横线上");
+            assert!((origin.1 - expected_baseline).abs() < 0.01, "基线应比横线高一个下伸高度");
             assert!((size - lh * 0.68).abs() < 0.01, "字号应为 0.68×行距");
         }
     }

@@ -1,7 +1,8 @@
 //! 线格纸型(四线三格/单横线)的绘制:行线 + 基线对齐的字符放置。
 //! 四线三格字号由字体 x-height 推导:小写 x 恰好填满中间格,
 //! 上伸部自然进入上格、下伸部进入下格(以 ascender/descender 钳制不越线)。
-//! 单横线:基线压在横线上(手写本语义),下伸部探入行间隙。
+//! 单横线:横线作为下伸部的底线(相当于四线三格的第 4 条线),
+//! 基线上移一个下伸高度,字母悬于线上、下伸字母底部触线,不与横线交叉。
 //! 格宽默认值按字体度量推导(以 m/W 的步进为准),保证字母间有间隙。
 
 use super::ir::{IrOp, IrPath, StrokeSpec};
@@ -59,10 +60,13 @@ pub fn paint_page(
                 y + 2.0 * h
             }
             PaperKind::HengXian => {
-                // 横线在行带底部,字母基线压线
+                // 横线在行带底部,作为下伸部的底线:基线上移一个下伸高度,
+                // 字母整体悬于线上,下伸字母(q/y/g/p)底部恰好触线而不穿过
                 let ly = y + params.line_height();
                 ops.push(IrOp::Stroke { path: IrPath::hline(geo.left, x_right, ly), style: line_style.clone() });
-                ly
+                let info = shaper.face_info();
+                let desc_pt = (info.descender / info.units_per_em).abs() * font_size;
+                ly - desc_pt
             }
             _ => unreachable!("方块纸型由 grid 模块处理"),
         };
