@@ -1,0 +1,17 @@
+# 发布用镜像:直接 COPY CI 预编译的 musl 静态二进制(免交叉模拟编译,秒级构建)。
+# 无任何 RUN 步骤 → buildx 多架构构建不需要 QEMU。
+# CI 用法见 .github/workflows/release.yml;本地源码构建请用主 Dockerfile。
+FROM alpine:3.20
+
+# buildx 自动注入:amd64 / arm64
+ARG TARGETARCH
+
+# dist/linux-amd64 与 dist/linux-arm64 由 CI 从构建产物布局而来,
+# 内含:zitie 二进制(musl 静态)+ static 前端 + assets 内置字体(OFL)+ README
+COPY dist/linux-${TARGETARCH}/ /app/
+
+ENV ZITIE_ADDR=0.0.0.0:8080 ZITIE_DATA_DIR=/data
+WORKDIR /app
+VOLUME /data
+EXPOSE 8080
+ENTRYPOINT ["/app/zitie"]

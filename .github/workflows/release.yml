@@ -1,5 +1,6 @@
 # 打 tag(v*)触发:多平台构建 → 发布 GitHub Release(含字体,开箱即用)
-# → 构建多架构 Docker 镜像推送 ghcr.io/dwdcth/zitie
+# → 用预编译 musl 二进制装配多架构 Docker 镜像(纯 COPY,免 QEMU 模拟)
+# 推送 ghcr.io/dwdcth/zitie
 name: release
 
 on:
@@ -97,13 +98,20 @@ jobs:
           files: ${{ env.ASSET }}
           generate_release_notes: true
 
+      # linux musl 的完整目录额外上传,供 docker 任务装配镜像(免模拟编译)
+      - name: Upload dist for docker
+        if: startsWith(matrix.target, 'x86_64-unknown-linux') || startsWith(matrix.target, 'aarch64-unknown-linux')
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux-${{ matrix.target }}
+          path: zitie-*/
+
   docker:
     name: docker (amd64 + arm64)
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v4
-
-      - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
 
@@ -112,6 +120,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download prebuilt linux dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-linux-*
+
+      - name: Layout dist/
+        run: |
+          mkdir -p dist/linux-amd64 dist/linux-arm64
+          cp -r dist-linux-x86_64-unknown-linux-musl/zitie-*-x86_64-unknown-linux-musl/. dist/linux-amd64/
+          cp -r dist-linux-aarch64-unknown-linux-musl/zitie-*-aarch64-unknown-linux-musl/. dist/linux-arm64/
+          ls -la dist/linux-amd64 dist/linux-arm64
 
       - uses: docker/metadata-action@v5
         id: meta
@@ -122,12 +142,12 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
 
+      # Dockerfile.release 只有 COPY,无 RUN → 多架构构建不需要 QEMU
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile.release
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

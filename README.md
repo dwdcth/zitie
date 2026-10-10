@@ -60,7 +60,7 @@ docker run -d -p 8080:8080 -v zitie-data:/data zitie
 - `main` 分支 push / PR 自动跑 fmt + clippy + 全量测试(`.github/workflows/ci.yml`)
 - 打 `v*` tag 自动构建发布(`.github/workflows/release.yml`):
   - 五平台二进制包(linux amd64/arm64 musl、macOS 双架构、windows x64),内含前端、内置字体与许可证,解压即用
-  - 多架构 Docker 镜像推送 `ghcr.io/dwdcth/zitie`(amd64 + arm64)
+  - 多架构 Docker 镜像(amd64 + arm64)推送 `ghcr.io/dwdcth/zitie`:由预编译 musl 二进制装配(`Dockerfile.release`,纯 COPY 无编译,秒级);本地源码构建用主 `Dockerfile`
 
 ```bash
 git tag v0.1.0 && git push origin v0.1.0   # 触发一次发布
